@@ -27,14 +27,21 @@ find_package(Threads REQUIRED)
 # duck_storage
 add_library(duck_storage
     src/storage/disk_manager.cpp
-    src/buffer/pool_manager.cpp
 )
 target_include_directories(duck_storage PUBLIC include)
 target_link_libraries(duck_storage PUBLIC Threads::Threads)
 
+# duck_buffer
+add_library(duck_buffer
+    src/buffer/pool_manager.cpp
+)
+target_include_directories(duck_buffer PUBLIC include)
+target_link_libraries(duck_buffer PUBLIC Threads::Threads)
+
 # --- executable ---
 add_executable(duck src/main.cpp)
 target_link_libraries(duck PRIVATE duck_storage)
+target_link_libraries(duck PRIVATE duck_buffer)
 
 # --- tests ---
 if(DUCK_BUILD_TESTS)
