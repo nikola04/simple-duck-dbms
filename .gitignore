@@ -1,4 +1,4 @@
-build/
+build*/
 .cache/
 
 # Temp DB files
