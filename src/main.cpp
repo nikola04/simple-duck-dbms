@@ -22,7 +22,7 @@ int main() {
 
         std::println("{}, {}: {}", page_id, disk_manager.capacity(), buffer);
 
-        for (size_t i{0}; i < disk_manager.capacity(); i++) {
+        for (duck::PageID i{0}; i < disk_manager.capacity(); i++) {
             char buffer[duck::kPAGE_SIZE];
             disk_manager.read_page(i, buffer);
             std::println("{}: {}", i, buffer);

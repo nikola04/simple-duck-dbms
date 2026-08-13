@@ -1,5 +1,7 @@
 #pragma once
 
+#include "duck/common/types.hpp"
+
 #include <atomic>
 #include <cstddef>
 #include <mutex>
@@ -13,11 +15,11 @@ public:
     explicit DiskManager(std::string path);
     ~DiskManager();
 
-    void read_page(size_t page_id, char* buffer);
-    void write_page(size_t page_id, const char* buffer);
+    void read_page(PageID page_id, char* buffer);
+    void write_page(PageID page_id, const char* buffer);
 
-    size_t allocate_page();
-    void deallocate_page(size_t page_id);
+    PageID allocate_page();
+    void deallocate_page(PageID page_id);
 
     size_t capacity() const {
         return capacity_;
@@ -27,9 +29,9 @@ private:
     const std::string path_;
     const int fd_;
 
-    std::atomic<size_t> capacity_{0};
+    std::atomic<PageID> capacity_{0};
 
-    std::vector<size_t> free_list_{};
+    std::vector<PageID> free_list_{};
     std::mutex free_list_mutex{};
 
     off_t get_size() const;
