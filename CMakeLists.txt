@@ -35,3 +35,22 @@ target_link_libraries(duck_storage PUBLIC Threads::Threads)
 # --- executable ---
 add_executable(duck src/main.cpp)
 target_link_libraries(duck PRIVATE duck_storage)
+
+# --- tests ---
+if(DUCK_BUILD_TESTS)
+  include(FetchContent)
+  FetchContent_Declare(
+    googletest
+    URL https://github.com/google/googletest/archive/refs/tags/v1.15.2.zip
+  )
+  set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+  FetchContent_MakeAvailable(googletest)
+
+  enable_testing()
+  add_executable(duck_tests
+      test/storage/disk_manager_test.cpp
+  )
+  target_link_libraries(duck_tests PRIVATE duck_storage GTest::gtest_main)
+  include(GoogleTest)
+  gtest_discover_tests(duck_tests)
+endif()
