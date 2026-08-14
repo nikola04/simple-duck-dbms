@@ -16,9 +16,10 @@ int main() {
         duck::DiskManager disk_manager{"test.db"};
         duck::BufferPoolManager pool{disk_manager, 5};
 
-        duck::PinnedPage page = duck::make_pinned(pool.new_page(), &pool);
-        std::println("{}: {}", page.page_id(), static_cast<const void*>(page.data()));
-        duck::PinnedPage page2 = duck::make_pinned(pool.new_page(), &pool);
+        duck::PinnedPage page = duck::make_pinned(pool.fetch_page(0), &pool);
+        std::println("{}: {}", page.page_id(), page.data());
+        page.mark_dirty();
+        // duck::PinnedPage page2 = duck::make_pinned(pool.new_page(), &pool);
 
         // std::println("{}: {}", page.page_id(), page.data());
         // std::println("{}: {}", page2.page_id(), page2.data());

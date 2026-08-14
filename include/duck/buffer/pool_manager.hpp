@@ -12,11 +12,14 @@ namespace duck {
 class BufferPoolManager {
 public:
     BufferPoolManager(DiskManager& disk_manager, size_t pool_size);
+    ~BufferPoolManager();
 
     Page* new_page();
     Page* fetch_page(const PageID page_id);
 
     void unpin_page(const PageID page_id, bool dirty = false);
+
+    void flush_all();
 
 private:
     DiskManager& disk_manager_;
@@ -29,6 +32,7 @@ private:
     std::atomic<FrameID> frames_capacity_{};
     FrameID find_next_frame();
     Page* find_cached_page(PageID page_id);
+    void flush_page(Page& page);
     Page* swap_page(PageID page_id, bool read_from_disk = true);
 };
 

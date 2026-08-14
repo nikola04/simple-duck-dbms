@@ -1,6 +1,5 @@
 #include "duck/buffer/pool_manager.hpp"
 #include "duck/storage/disk_manager.hpp"
-#include <iostream>
 #include <memory>
 #include <mutex>
 #include <shared_mutex>
@@ -9,6 +8,10 @@ namespace duck {
 
 BufferPoolManager::BufferPoolManager(DiskManager& disk_manager, size_t pool_size)
     : disk_manager_(disk_manager), pool_size_(pool_size), frames_(std::make_unique<Page[]>(pool_size_)) {
+}
+
+BufferPoolManager::~BufferPoolManager() {
+    flush_all();
 }
 
 Page* BufferPoolManager::new_page() {
@@ -40,6 +43,10 @@ Page* BufferPoolManager::find_cached_page(PageID page_id) {
     return nullptr;
 }
 
+void BufferPoolManager::flush_page(Page& page) {
+    disk_manager_.write_page(page.page_id(), page.data());
+}
+
 Page* BufferPoolManager::swap_page(PageID page_id, bool read_from_disk) {
     std::unique_lock<std::shared_mutex> lock{latch_};
 
@@ -51,7 +58,7 @@ Page* BufferPoolManager::swap_page(PageID page_id, bool read_from_disk) {
     std::unique_lock<std::shared_mutex> page_lock{page.latch()};
 
     if (page.is_dirty()) {
-        disk_manager_.write_page(page.page_id(), page.data());
+        flush_page(page);
     }
 
     page_table_[page_id] = frame_id;
@@ -73,14 +80,27 @@ void BufferPoolManager::unpin_page(const PageID page_id, bool dirty) {
 
     std::unique_lock<std::shared_mutex> page_lock{page.latch()};
 
-    page.dec_pin_count();
+    if (dirty)
+        page.set_dirty();
 
-    std::cout << "decrease pin count for: " << page_id << "\n";
+    page.dec_pin_count();
 }
 
 FrameID BufferPoolManager::find_next_frame() {
     return frames_capacity_++;
     // return INVALID_FRAME_ID;
+}
+
+void BufferPoolManager::flush_all() {
+    std::unique_lock<std::shared_mutex> lock{latch_};
+
+    for (FrameID id{0}; id < frames_capacity_; ++id) {
+        Page& page{frames_[id]};
+        if (!page.is_dirty())
+            continue;
+
+        flush_page(page);
+    }
 }
 
 } // namespace duck
