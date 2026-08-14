@@ -14,15 +14,18 @@
 int main() {
     try {
         duck::DiskManager disk_manager{"test.db"};
-        duck::BufferPoolManager pool{disk_manager, 5};
+        duck::BufferPoolManager pool{disk_manager, 2};
 
         duck::PinnedPage page = duck::make_pinned(pool.fetch_page(0), &pool);
-        std::println("{}: {}", page.page_id(), page.data());
+        std::println("{}: {}", page.page_id(), static_cast<void*>(page.data()));
+        {
+            duck::PinnedPage page2 = duck::make_pinned(pool.new_page(), &pool);
+            std::println("{}: {}", page2.page_id(), static_cast<void*>(page2.data()));
+        }
+        duck::PinnedPage page3 = duck::make_pinned(pool.new_page(), &pool);
+        std::println("{}: {}", page3.page_id(), static_cast<void*>(page3.data()));
         page.mark_dirty();
-        // duck::PinnedPage page2 = duck::make_pinned(pool.new_page(), &pool);
 
-        // std::println("{}: {}", page.page_id(), page.data());
-        // std::println("{}: {}", page2.page_id(), page2.data());
     } catch (std::exception& e) {
         std::cout << "Exception: " << e.what() << "\n";
     }

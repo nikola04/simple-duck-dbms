@@ -1,4 +1,5 @@
 #include "duck/buffer/pool_manager.hpp"
+#include "duck/buffer/replacer.hpp"
 #include "duck/storage/disk_manager.hpp"
 #include <memory>
 #include <mutex>
@@ -6,8 +7,9 @@
 
 namespace duck {
 
-BufferPoolManager::BufferPoolManager(DiskManager& disk_manager, size_t pool_size)
-    : disk_manager_(disk_manager), pool_size_(pool_size), frames_(std::make_unique<Page[]>(pool_size_)) {
+BufferPoolManager::BufferPoolManager(DiskManager& disk_manager, size_t pool_capacity)
+    : disk_manager_(disk_manager), pool_capacity_(pool_capacity), frames_(std::make_unique<Page[]>(pool_capacity_)),
+      replacer_(frames_.get(), page_table_) {
 }
 
 BufferPoolManager::~BufferPoolManager() {
@@ -28,7 +30,7 @@ Page* BufferPoolManager::fetch_page(const PageID page_id) {
 }
 
 Page* BufferPoolManager::find_cached_page(PageID page_id) {
-    std::shared_lock<std::shared_mutex> lock{latch_};
+    std::unique_lock<std::shared_mutex> lock{latch_}; // for now will be unique because of replacer.record
 
     if (auto it = page_table_.find(page_id); it != page_table_.end()) {
         FrameID frame_id = it->second;
@@ -37,6 +39,7 @@ Page* BufferPoolManager::find_cached_page(PageID page_id) {
         std::unique_lock<std::shared_mutex> page_lock{page.latch()};
 
         page.inc_pin_count();
+        replacer_.record(page_id);
         return &page;
     }
 
@@ -57,6 +60,11 @@ Page* BufferPoolManager::swap_page(PageID page_id, bool read_from_disk) {
     Page& page{frames_[frame_id]};
     std::unique_lock<std::shared_mutex> page_lock{page.latch()};
 
+    if (page.page_id() != INVALID_PAGE_ID) {
+        page_table_.erase(page.page_id());
+        replacer_.remove(page.page_id());
+    }
+
     if (page.is_dirty()) {
         flush_page(page);
     }
@@ -64,6 +72,7 @@ Page* BufferPoolManager::swap_page(PageID page_id, bool read_from_disk) {
     page_table_[page_id] = frame_id;
     page.reset_memory(page_id);
     page.inc_pin_count();
+    replacer_.record(page_id);
 
     lock.unlock();
     if (read_from_disk)
@@ -75,31 +84,37 @@ Page* BufferPoolManager::swap_page(PageID page_id, bool read_from_disk) {
 void BufferPoolManager::unpin_page(const PageID page_id, bool dirty) {
     std::shared_lock<std::shared_mutex> lock{latch_};
 
-    FrameID frame_id = page_table_[page_id];
-    Page& page{frames_[frame_id]};
+    if (const auto it = page_table_.find(page_id); it != page_table_.end()) {
+        FrameID frame_id = it->second;
+        Page& page{frames_[frame_id]};
 
-    std::unique_lock<std::shared_mutex> page_lock{page.latch()};
+        std::unique_lock<std::shared_mutex> page_lock{page.latch()};
 
-    if (dirty)
-        page.set_dirty();
+        if (dirty)
+            page.set_dirty();
 
-    page.dec_pin_count();
+        page.dec_pin_count();
+    }
 }
 
 FrameID BufferPoolManager::find_next_frame() {
-    return frames_capacity_++;
-    // return INVALID_FRAME_ID;
+    if (pool_size_ < pool_capacity_)
+        return pool_size_++;
+
+    // find frame to replace
+    if (PageID page_id = replacer_.find_lru(); page_id != INVALID_PAGE_ID) {
+        return page_table_[page_id];
+    }
+
+    return INVALID_FRAME_ID;
 }
 
 void BufferPoolManager::flush_all() {
     std::unique_lock<std::shared_mutex> lock{latch_};
 
-    for (FrameID id{0}; id < frames_capacity_; ++id) {
-        Page& page{frames_[id]};
-        if (!page.is_dirty())
-            continue;
-
-        flush_page(page);
+    for (FrameID id{0}; id < pool_size_; ++id) {
+        if (Page& page{frames_[id]}; page.is_dirty())
+            flush_page(page);
     }
 }
 

@@ -6,7 +6,7 @@
 namespace duck {
 
 void Page::reset_memory(PageID page_id) {
-    memset(data_, 0, kPAGE_SIZE);
+    memset(data_.data(), 0, kPAGE_SIZE);
 
     page_id_ = page_id;
     is_dirty_ = false;

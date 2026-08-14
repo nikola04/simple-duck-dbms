@@ -14,10 +14,10 @@ public:
     Page& operator=(const Page&) = delete;
 
     char* data() {
-        return data_;
+        return data_.data();
     }
     const char* data() const {
-        return data_;
+        return data_.data();
     }
 
     PageID page_id() const {
@@ -49,7 +49,7 @@ public:
 
 private:
     PageID page_id_{INVALID_PAGE_ID};
-    char data_[kPAGE_SIZE]{0};
+    std::array<char, kPAGE_SIZE> data_{0};
 
     std::uint32_t pin_count_{0};
     bool is_dirty_{false};
