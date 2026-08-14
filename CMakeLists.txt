@@ -36,6 +36,7 @@ add_library(duck_buffer
     src/buffer/pool_manager.cpp
     src/buffer/page.cpp
     src/buffer/pinned_page.cpp
+    src/buffer/replacer.cpp
 )
 target_include_directories(duck_buffer PUBLIC include)
 target_link_libraries(duck_buffer PUBLIC Threads::Threads)
@@ -58,8 +59,9 @@ if(DUCK_BUILD_TESTS)
   enable_testing()
   add_executable(duck_tests
       test/storage/disk_manager_test.cpp
+      test/buffer/buffer_pool_manager_test.cpp
   )
-  target_link_libraries(duck_tests PRIVATE duck_storage GTest::gtest_main)
+  target_link_libraries(duck_tests PRIVATE duck_storage duck_buffer GTest::gtest_main)
   include(GoogleTest)
   gtest_discover_tests(duck_tests)
 endif()
