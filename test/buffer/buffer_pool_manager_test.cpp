@@ -248,7 +248,7 @@ TEST_F(BufferPoolManagerTest, StressMixedDirtyEvictionUnderPressure) {
         ASSERT_NE(page, nullptr);
         duck::PageID id = page->page_id();
         std::memcpy(page->data(), &id, sizeof(id));
-        bpm.unpin_page(id, /*dirty=*/true); // UVEK true — sadržaj je stvarno promenjen
+        bpm.unpin_page(id, /*dirty=*/true);
         ids.push_back(id);
     }
 
