@@ -23,8 +23,11 @@ DiskManager::DiskManager(std::string path)
 }
 
 DiskManager::~DiskManager() {
-    if (fd_ != -1)
-        close(fd_);
+    if (fd_ == -1)
+        return;
+
+    flush_all();
+    close(fd_);
 }
 
 PageID DiskManager::allocate_page() {
@@ -40,6 +43,12 @@ PageID DiskManager::allocate_page() {
 void DiskManager::deallocate_page(PageID page_id) {
     std::lock_guard lock{free_list_mutex};
     free_list_.push_back(page_id);
+}
+
+void DiskManager::flush_all() {
+    std::lock_guard lock{free_list_mutex};
+
+    // should save all meta(free list) to disk
 }
 
 void DiskManager::write_page(PageID page_id, const char* buffer) {

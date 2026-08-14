@@ -29,6 +29,30 @@ Page* BufferPoolManager::fetch_page(const PageID page_id) {
     return swap_page(page_id);
 }
 
+bool BufferPoolManager::delete_page(const PageID page_id) {
+    std::unique_lock<std::shared_mutex> lock{latch_};
+
+    if (auto it = page_table_.find(page_id); it != page_table_.end()) {
+        FrameID frame_id = it->second;
+        Page& page{frames_[frame_id]};
+
+        std::unique_lock<std::shared_mutex> page_lock{page.latch()};
+
+        if (page.pin_count() > 0)
+            return false;
+
+        page_table_.erase(it);
+        replacer_.remove(page_id);
+        page.reset_memory();
+
+        std::unique_lock<std::mutex> lock{free_frames_list_latch_};
+        free_frames_list_.push_back(frame_id);
+    }
+
+    disk_manager_.deallocate_page(page_id);
+    return true;
+}
+
 Page* BufferPoolManager::find_cached_page(PageID page_id) {
     std::unique_lock<std::shared_mutex> lock{latch_}; // for now will be unique because of replacer.record
 
@@ -98,6 +122,13 @@ void BufferPoolManager::unpin_page(const PageID page_id, bool dirty) {
 }
 
 FrameID BufferPoolManager::find_next_frame() {
+    if (std::unique_lock<std::mutex> lock{free_frames_list_latch_}; !free_frames_list_.empty()) {
+        FrameID frame_id{free_frames_list_.back()};
+        free_frames_list_.pop_back();
+
+        return frame_id;
+    }
+
     if (pool_size_ < pool_capacity_)
         return pool_size_++;
 

@@ -47,6 +47,10 @@ public:
 
     void reset_memory(PageID page_id);
 
+    void reset_memory() {
+        reset_memory(INVALID_PAGE_ID);
+    }
+
 private:
     PageID page_id_{INVALID_PAGE_ID};
     std::array<char, kPAGE_SIZE> data_{0};

@@ -25,6 +25,8 @@ public:
         return capacity_;
     }
 
+    void flush_all();
+
 private:
     const std::string path_;
     const int fd_;

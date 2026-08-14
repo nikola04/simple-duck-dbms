@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <memory>
 #include <unordered_map>
+#include <vector>
 
 namespace duck {
 
@@ -16,6 +17,7 @@ public:
 
     Page* new_page();
     Page* fetch_page(const PageID page_id);
+    bool delete_page(const PageID page_id);
 
     void unpin_page(const PageID page_id, bool dirty = false);
 
@@ -29,6 +31,8 @@ private:
     std::unique_ptr<Page[]> frames_;
     std::unordered_map<PageID, FrameID> page_table_{};
     std::shared_mutex latch_{};
+    std::vector<FrameID> free_frames_list_{};
+    std::mutex free_frames_list_latch_{};
 
     FrameID find_next_frame();
     Page* find_cached_page(PageID page_id);
