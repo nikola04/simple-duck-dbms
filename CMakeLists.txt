@@ -34,6 +34,8 @@ target_link_libraries(duck_storage PUBLIC Threads::Threads)
 # duck_buffer
 add_library(duck_buffer
     src/buffer/pool_manager.cpp
+    src/buffer/page.cpp
+    src/buffer/pinned_page.cpp
 )
 target_include_directories(duck_buffer PUBLIC include)
 target_link_libraries(duck_buffer PUBLIC Threads::Threads)

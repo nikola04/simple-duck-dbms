@@ -23,18 +23,29 @@ public:
     PageID page_id() const {
         return page_id_;
     }
+
     bool is_dirty() const {
         return is_dirty_;
     }
+    void set_dirty() {
+        is_dirty_ = true;
+    }
+
     std::uint32_t pin_count() const {
         return pin_count_;
+    }
+    void inc_pin_count() {
+        pin_count_++;
+    }
+    void dec_pin_count() {
+        pin_count_--;
     }
 
     std::shared_mutex& latch() {
         return latch_;
     }
 
-    void reset_memory();
+    void reset_memory(PageID page_id);
 
 private:
     PageID page_id_{INVALID_PAGE_ID};

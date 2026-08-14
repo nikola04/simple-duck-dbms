@@ -3,7 +3,8 @@
  * SPDX-License-Identifier: MIT
  */
 
-#include "duck/config/sizes.hpp"
+#include "duck/buffer/pinned_page.hpp"
+#include "duck/buffer/pool_manager.hpp"
 #include "duck/storage/disk_manager.hpp"
 #include <cstddef>
 #include <exception>
@@ -13,20 +14,14 @@
 int main() {
     try {
         duck::DiskManager disk_manager{"test.db"};
-        size_t page_id{disk_manager.allocate_page()};
+        duck::BufferPoolManager pool{disk_manager, 5};
 
-        disk_manager.write_page(page_id, "TEST2 AAA");
+        duck::PinnedPage page = duck::make_pinned(pool.new_page(), &pool);
+        std::println("{}: {}", page.page_id(), static_cast<const void*>(page.data()));
+        duck::PinnedPage page2 = duck::make_pinned(pool.new_page(), &pool);
 
-        char buffer[duck::kPAGE_SIZE];
-        disk_manager.read_page(page_id, buffer);
-
-        std::println("{}, {}: {}", page_id, disk_manager.capacity(), buffer);
-
-        for (duck::PageID i{0}; i < disk_manager.capacity(); i++) {
-            char buffer[duck::kPAGE_SIZE];
-            disk_manager.read_page(i, buffer);
-            std::println("{}: {}", i, buffer);
-        }
+        // std::println("{}: {}", page.page_id(), page.data());
+        // std::println("{}: {}", page2.page_id(), page2.data());
     } catch (std::exception& e) {
         std::cout << "Exception: " << e.what() << "\n";
     }
