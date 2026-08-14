@@ -261,3 +261,84 @@ TEST_F(BufferPoolManagerTest, StressMixedDirtyEvictionUnderPressure) {
         bpm.unpin_page(id);
     }
 }
+
+TEST_F(BufferPoolManagerTest, DeleteUnpinnedPageSucceeds) {
+    duck::DiskManager dm{test_file_};
+    duck::BufferPoolManager bpm{dm, 3};
+
+    duck::Page* page = bpm.new_page();
+    duck::PageID id = page->page_id();
+    bpm.unpin_page(id);
+
+    EXPECT_TRUE(bpm.delete_page(id));
+}
+
+TEST_F(BufferPoolManagerTest, DeletePinnedPageFails) {
+    duck::DiskManager dm{test_file_};
+    duck::BufferPoolManager bpm{dm, 3};
+
+    duck::Page* page = bpm.new_page();
+    duck::PageID id = page->page_id();
+    // intentionally NOT unpinned — page is still in use
+
+    EXPECT_FALSE(bpm.delete_page(id));
+
+    bpm.unpin_page(id);
+}
+
+TEST_F(BufferPoolManagerTest, DeletedFrameIsReusedBeforeEviction) {
+    duck::DiskManager dm{test_file_};
+    duck::BufferPoolManager bpm{dm, 1}; // single frame pool
+
+    duck::Page* p0 = bpm.new_page();
+    duck::PageID id0 = p0->page_id();
+    bpm.unpin_page(id0);
+
+    ASSERT_TRUE(bpm.delete_page(id0));
+
+    // Pool has only one frame; it was freed by delete_page.
+    // A new page should be able to use it directly, without needing an eviction victim.
+    duck::Page* p1 = bpm.new_page();
+    ASSERT_NE(p1, nullptr);
+    bpm.unpin_page(p1->page_id());
+}
+
+TEST_F(BufferPoolManagerTest, DeletedPageIdIsRecycledByDiskManager) {
+    duck::DiskManager dm{test_file_};
+    duck::BufferPoolManager bpm{dm, 3};
+
+    duck::Page* p0 = bpm.new_page();
+    duck::PageID id0 = p0->page_id();
+    bpm.unpin_page(id0);
+
+    ASSERT_TRUE(bpm.delete_page(id0));
+
+    // DiskManager's free-list should hand back the same page_id on next allocation.
+    duck::Page* p1 = bpm.new_page();
+    EXPECT_EQ(p1->page_id(), id0);
+    bpm.unpin_page(p1->page_id());
+}
+
+TEST_F(BufferPoolManagerTest, DeleteNonCachedPageStillDeallocatesOnDisk) {
+    duck::DiskManager dm{test_file_};
+    duck::BufferPoolManager bpm{dm, 3};
+
+    duck::Page* p0 = bpm.new_page();
+    duck::PageID id0 = p0->page_id();
+    bpm.unpin_page(id0);
+
+    // Evict it out of the cache by filling the pool with other pages,
+    // so id0 is no longer present in page_table_ when we delete it.
+    for (int i = 0; i < 5; ++i) {
+        duck::Page* p = bpm.new_page();
+        ASSERT_NE(p, nullptr);
+        bpm.unpin_page(p->page_id());
+    }
+
+    EXPECT_TRUE(bpm.delete_page(id0));
+
+    // page_id should be recyclable afterwards
+    duck::Page* recycled = bpm.new_page();
+    EXPECT_EQ(recycled->page_id(), id0);
+    bpm.unpin_page(recycled->page_id());
+}
