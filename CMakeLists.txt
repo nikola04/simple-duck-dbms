@@ -41,10 +41,19 @@ add_library(duck_buffer
 target_include_directories(duck_buffer PUBLIC include)
 target_link_libraries(duck_buffer PUBLIC Threads::Threads)
 
+# duck_tuple
+add_library(duck_tuple
+    src/tuple/tuple.cpp
+    src/tuple/slotted_page.cpp
+)
+target_include_directories(duck_tuple PUBLIC include)
+target_link_libraries(duck_tuple PUBLIC Threads::Threads)
+
 # --- executable ---
 add_executable(duck src/main.cpp)
 target_link_libraries(duck PRIVATE duck_storage)
 target_link_libraries(duck PRIVATE duck_buffer)
+target_link_libraries(duck PRIVATE duck_tuple)
 
 # --- tests ---
 if(DUCK_BUILD_TESTS)
@@ -60,8 +69,9 @@ if(DUCK_BUILD_TESTS)
   add_executable(duck_tests
       test/storage/disk_manager_test.cpp
       test/buffer/buffer_pool_manager_test.cpp
+      test/tuple/slotted_page_test.cpp
   )
-  target_link_libraries(duck_tests PRIVATE duck_storage duck_buffer GTest::gtest_main)
+  target_link_libraries(duck_tests PRIVATE duck_storage duck_buffer duck_tuple GTest::gtest_main)
   include(GoogleTest)
   gtest_discover_tests(duck_tests)
 endif()
