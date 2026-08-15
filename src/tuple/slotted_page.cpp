@@ -1,5 +1,5 @@
 #include "duck/tuple/slotted_page.hpp"
-#include "duck/storage/disk_manager.hpp"
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
@@ -12,6 +12,7 @@ SlottedPage::SlottedPage(std::span<std::byte> data)
 }
 
 void SlottedPage::init() {
+    header_->next_page_id = INVALID_PAGE_ID;
     header_->free_space_offset = static_cast<uint16_t>(data_.size());
     header_->slot_count = 0;
 }

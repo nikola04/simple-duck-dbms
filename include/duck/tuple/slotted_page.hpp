@@ -1,13 +1,15 @@
 #pragma once
 
-#include "duck/storage/disk_manager.hpp"
+#include "../common/rid.hpp"
 #include <cstddef>
 #include <cstdint>
 #include <optional>
+#include <span>
 
 namespace duck {
 
 struct [[gnu::packed]] PageHeader {
+    PageID next_page_id;
     std::uint16_t slot_count;
     std::uint16_t free_space_offset;
 };
@@ -15,11 +17,6 @@ struct [[gnu::packed]] PageHeader {
 struct [[gnu::packed]] Slot {
     std::uint16_t offset;
     std::uint16_t length;
-};
-
-struct RID {
-    PageID page_id;
-    std::uint16_t slot_num;
 };
 
 class SlottedPage {
