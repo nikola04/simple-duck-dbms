@@ -6,6 +6,7 @@
 #include "duck/buffer/pool_manager.hpp"
 #include "duck/storage/disk_manager.hpp"
 
+#include <cstddef>
 #include <cstdio>
 #include <cstring>
 #include <gtest/gtest.h>
@@ -44,7 +45,7 @@ TEST_F(BufferPoolManagerTest, NewPageIsZeroed) {
     ASSERT_NE(page, nullptr);
 
     char zeros[duck::kPAGE_SIZE] = {};
-    EXPECT_EQ(std::memcmp(page->data(), zeros, duck::kPAGE_SIZE), 0);
+    EXPECT_EQ(std::memcmp(page->data().data(), zeros, duck::kPAGE_SIZE), 0);
 
     bpm.unpin_page(page->page_id());
 }
@@ -55,13 +56,13 @@ TEST_F(BufferPoolManagerTest, WriteThenFetchSeesSameData) {
 
     duck::Page* page = bpm.new_page();
     duck::PageID id = page->page_id();
-    std::memcpy(page->data(), "hello", 5);
+    std::memcpy(page->data().data(), "hello", 5);
     bpm.unpin_page(id, /*dirty=*/true);
 
     duck::Page* fetched = bpm.fetch_page(id);
     ASSERT_NE(fetched, nullptr);
     EXPECT_EQ(fetched, page);
-    EXPECT_EQ(std::memcmp(fetched->data(), "hello", 5), 0);
+    EXPECT_EQ(std::memcmp(fetched->data().data(), "hello", 5), 0);
 
     bpm.unpin_page(id);
 }
@@ -125,7 +126,7 @@ TEST_F(BufferPoolManagerTest, DirtyPageIsFlushedOnEviction) {
 
     duck::Page* p0 = bpm.new_page();
     duck::PageID id0 = p0->page_id();
-    std::memcpy(p0->data(), "persisted-data", 14);
+    std::memcpy(p0->data().data(), "persisted-data", 14);
     bpm.unpin_page(id0, /*dirty=*/true);
 
     duck::Page* p1 = bpm.new_page();
@@ -134,7 +135,7 @@ TEST_F(BufferPoolManagerTest, DirtyPageIsFlushedOnEviction) {
 
     duck::Page* refetched = bpm.fetch_page(id0);
     ASSERT_NE(refetched, nullptr);
-    EXPECT_EQ(std::memcmp(refetched->data(), "persisted-data", 14), 0);
+    EXPECT_EQ(std::memcmp(refetched->data().data(), "persisted-data", 14), 0);
     bpm.unpin_page(id0);
 }
 
@@ -165,7 +166,7 @@ TEST_F(BufferPoolManagerTest, ConcurrentFetchUnpinNoDataRace) {
                 }
                 {
                     std::unique_lock lock(page->latch());
-                    std::memset(page->data(), static_cast<char>(t), duck::kPAGE_SIZE);
+                    std::memset(page->data().data(), static_cast<char>(t), duck::kPAGE_SIZE);
                 }
                 bpm.unpin_page(id, /*dirty=*/true);
             }
@@ -195,12 +196,12 @@ TEST_F(BufferPoolManagerTest, FlushAllPersistsDirtyPages) {
 
         duck::Page* p0 = bpm.new_page();
         id0 = p0->page_id();
-        std::memcpy(p0->data(), "page-zero", 9);
+        std::memcpy(p0->data().data(), "page-zero", 9);
         bpm.unpin_page(id0, /*dirty=*/true);
 
         duck::Page* p1 = bpm.new_page();
         id1 = p1->page_id();
-        std::memcpy(p1->data(), "page-one", 8);
+        std::memcpy(p1->data().data(), "page-one", 8);
         bpm.unpin_page(id1, /*dirty=*/true);
     }
 
@@ -209,12 +210,12 @@ TEST_F(BufferPoolManagerTest, FlushAllPersistsDirtyPages) {
 
     duck::Page* r0 = bpm2.fetch_page(id0);
     ASSERT_NE(r0, nullptr);
-    EXPECT_EQ(std::memcmp(r0->data(), "page-zero", 9), 0);
+    EXPECT_EQ(std::memcmp(r0->data().data(), "page-zero", 9), 0);
     bpm2.unpin_page(id0);
 
     duck::Page* r1 = bpm2.fetch_page(id1);
     ASSERT_NE(r1, nullptr);
-    EXPECT_EQ(std::memcmp(r1->data(), "page-one", 8), 0);
+    EXPECT_EQ(std::memcmp(r1->data().data(), "page-one", 8), 0);
     bpm2.unpin_page(id1);
 }
 
@@ -224,15 +225,15 @@ TEST_F(BufferPoolManagerTest, CleanPageIsNotFlushedOnEviction) {
 
     duck::Page* p0 = bpm.new_page();
     duck::PageID id0 = p0->page_id();
-    std::memcpy(p0->data(), "should-not-persist", 19);
+    std::memcpy(p0->data().data(), "should-not-persist", 19);
     bpm.unpin_page(id0, /*dirty=*/false);
 
     duck::Page* p1 = bpm.new_page();
     ASSERT_NE(p1, nullptr);
     bpm.unpin_page(p1->page_id());
 
-    char raw[duck::kPAGE_SIZE];
-    dm.read_page(id0, raw);
+    std::byte raw[duck::kPAGE_SIZE];
+    dm.read_page(id0, std::span<std::byte>{raw});
     EXPECT_NE(std::memcmp(raw, "should-not-persist", 19), 0);
 }
 
@@ -247,7 +248,7 @@ TEST_F(BufferPoolManagerTest, StressMixedDirtyEvictionUnderPressure) {
         duck::Page* page = bpm.new_page();
         ASSERT_NE(page, nullptr);
         duck::PageID id = page->page_id();
-        std::memcpy(page->data(), &id, sizeof(id));
+        std::memcpy(page->data().data(), &id, sizeof(id));
         bpm.unpin_page(id, /*dirty=*/true);
         ids.push_back(id);
     }
@@ -256,7 +257,7 @@ TEST_F(BufferPoolManagerTest, StressMixedDirtyEvictionUnderPressure) {
         duck::Page* page = bpm.fetch_page(id);
         ASSERT_NE(page, nullptr) << "fetch failed for page " << id;
         duck::PageID stored;
-        std::memcpy(&stored, page->data(), sizeof(stored));
+        std::memcpy(&stored, page->data().data(), sizeof(stored));
         EXPECT_EQ(stored, id) << "content mismatch for page " << id;
         bpm.unpin_page(id);
     }

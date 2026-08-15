@@ -2,6 +2,7 @@
 
 #include "duck/config/sizes.hpp"
 #include "duck/storage/disk_manager.hpp"
+#include <cstddef>
 #include <cstdint>
 #include <shared_mutex>
 
@@ -13,11 +14,11 @@ public:
     Page(const Page& page) = delete;
     Page& operator=(const Page&) = delete;
 
-    char* data() {
-        return data_.data();
+    std::span<std::byte> data() {
+        return data_;
     }
-    const char* data() const {
-        return data_.data();
+    std::span<const std::byte> data() const {
+        return data_;
     }
 
     PageID page_id() const {
@@ -27,8 +28,8 @@ public:
     bool is_dirty() const {
         return is_dirty_;
     }
-    void set_dirty() {
-        is_dirty_ = true;
+    void set_dirty(bool dirty = true) {
+        is_dirty_ = dirty;
     }
 
     std::uint32_t pin_count() const {
@@ -53,7 +54,7 @@ public:
 
 private:
     PageID page_id_{INVALID_PAGE_ID};
-    std::array<char, kPAGE_SIZE> data_{0};
+    std::array<std::byte, kPAGE_SIZE> data_{std::byte{0}};
 
     std::uint32_t pin_count_{0};
     bool is_dirty_{false};

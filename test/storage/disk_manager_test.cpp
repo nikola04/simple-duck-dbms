@@ -3,6 +3,7 @@
 #include "thread"
 #include "unordered_set"
 #include "gtest/gtest.h"
+#include <cstddef>
 
 class DiskManagerTest : public ::testing::Test {
 protected:
@@ -22,12 +23,12 @@ TEST_F(DiskManagerTest, WriteReadRoundTrip) {
 
     size_t page_id = dm.allocate_page();
 
-    char write_buf[duck::kPAGE_SIZE] = {};
+    std::byte write_buf[duck::kPAGE_SIZE] = {};
     std::memcpy(write_buf, "hello page", 10);
 
     dm.write_page(page_id, write_buf);
 
-    char read_buf[duck::kPAGE_SIZE] = {};
+    std::byte read_buf[duck::kPAGE_SIZE] = {};
     dm.read_page(page_id, read_buf);
 
     EXPECT_EQ(std::memcmp(write_buf, read_buf, duck::kPAGE_SIZE), 0);
@@ -38,7 +39,7 @@ TEST_F(DiskManagerTest, FreshPageReadsAsZero) {
 
     size_t page_id = dm.allocate_page();
 
-    char read_buf[duck::kPAGE_SIZE];
+    std::byte read_buf[duck::kPAGE_SIZE];
     std::memset(read_buf, 0xFF, duck::kPAGE_SIZE);
 
     dm.read_page(page_id, read_buf);
@@ -54,23 +55,24 @@ TEST_F(DiskManagerTest, MultiplePagesDontOverlap) {
     size_t p1 = dm.allocate_page();
     size_t p2 = dm.allocate_page();
 
-    char buf0[duck::kPAGE_SIZE] = {}, buf1[duck::kPAGE_SIZE] = {}, buf2[duck::kPAGE_SIZE] = {};
-    std::memset(buf0, 'A', duck::kPAGE_SIZE);
-    std::memset(buf1, 'B', duck::kPAGE_SIZE);
-    std::memset(buf2, 'C', duck::kPAGE_SIZE);
+    std::byte buf0_[duck::kPAGE_SIZE] = {}, buf1_[duck::kPAGE_SIZE] = {}, buf2_[duck::kPAGE_SIZE] = {};
+    std::span<std::byte> buf0 = {buf0_}, buf1 = {buf1_}, buf2 = {buf2_};
+    std::memset(buf0_, 'A', duck::kPAGE_SIZE);
+    std::memset(buf1_, 'B', duck::kPAGE_SIZE);
+    std::memset(buf2_, 'C', duck::kPAGE_SIZE);
 
     dm.write_page(p0, buf0);
     dm.write_page(p1, buf1);
     dm.write_page(p2, buf2);
 
-    char read0[duck::kPAGE_SIZE], read1[duck::kPAGE_SIZE], read2[duck::kPAGE_SIZE];
-    dm.read_page(p0, read0);
-    dm.read_page(p1, read1);
-    dm.read_page(p2, read2);
+    std::byte read0[duck::kPAGE_SIZE], read1[duck::kPAGE_SIZE], read2[duck::kPAGE_SIZE];
+    dm.read_page(p0, std::span<std::byte>{read0});
+    dm.read_page(p1, std::span<std::byte>{read1});
+    dm.read_page(p2, std::span<std::byte>{read2});
 
-    EXPECT_EQ(std::memcmp(read0, buf0, duck::kPAGE_SIZE), 0);
-    EXPECT_EQ(std::memcmp(read1, buf1, duck::kPAGE_SIZE), 0);
-    EXPECT_EQ(std::memcmp(read2, buf2, duck::kPAGE_SIZE), 0);
+    EXPECT_EQ(std::memcmp(read0, buf0_, duck::kPAGE_SIZE), 0);
+    EXPECT_EQ(std::memcmp(read1, buf1_, duck::kPAGE_SIZE), 0);
+    EXPECT_EQ(std::memcmp(read2, buf2_, duck::kPAGE_SIZE), 0);
 }
 
 TEST_F(DiskManagerTest, CapacityGrowsWithAllocation) {
@@ -88,7 +90,7 @@ TEST_F(DiskManagerTest, ReadWriteOutOfBoundsThrows) {
 
     dm.allocate_page();
 
-    char buf[duck::kPAGE_SIZE] = {};
+    std::byte buf[duck::kPAGE_SIZE] = {};
     EXPECT_THROW(dm.read_page(5, buf), std::runtime_error);
     EXPECT_THROW(dm.write_page(5, buf), std::runtime_error);
 }
@@ -110,14 +112,14 @@ TEST_F(DiskManagerTest, PersistsAcrossReopen) {
         duck::DiskManager dm{test_file_};
         size_t page_id = dm.allocate_page();
 
-        char buf[duck::kPAGE_SIZE] = {};
+        std::byte buf[duck::kPAGE_SIZE] = {};
         std::memcpy(buf, "persisted", 9);
         dm.write_page(page_id, buf);
     }
     duck::DiskManager dm2{test_file_};
     EXPECT_EQ(dm2.capacity(), 1u);
 
-    char read_buf[duck::kPAGE_SIZE] = {};
+    std::byte read_buf[duck::kPAGE_SIZE] = {};
     dm2.read_page(0, read_buf);
     EXPECT_EQ(std::memcmp(read_buf, "persisted", 9), 0);
 }

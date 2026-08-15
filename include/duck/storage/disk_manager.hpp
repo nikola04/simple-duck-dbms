@@ -5,6 +5,7 @@
 #include <atomic>
 #include <cstddef>
 #include <mutex>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -15,8 +16,8 @@ public:
     explicit DiskManager(std::string path);
     ~DiskManager();
 
-    void read_page(PageID page_id, char* buffer);
-    void write_page(PageID page_id, const char* buffer);
+    void read_page(PageID page_id, std::span<std::byte> buffer);
+    void write_page(PageID page_id, std::span<const std::byte> buffer);
 
     PageID allocate_page();
     void deallocate_page(PageID page_id);

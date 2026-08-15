@@ -18,14 +18,14 @@ int main() {
 
         duck::PageID page_id;
         {
-            duck::PinnedPage page = duck::make_pinned(pool.fetch_page(0), &pool);
+            duck::PinnedPage page = duck::make_pinned(pool.fetch_page(3), &pool);
             page.mark_dirty();
-            std::println("{}: {}", page.page_id(), static_cast<void*>(page.data()));
+            std::println("{}: {}", page.page_id(), static_cast<void*>(page.data().data()));
         }
 
         {
             duck::PinnedPage page2 = duck::make_pinned(pool.new_page(), &pool);
-            std::println("{}: {}", page2.page_id(), static_cast<void*>(page2.data()));
+            std::println("{}: {}", page2.page_id(), static_cast<void*>(page2.data().data()));
             page_id = page2.page_id();
         }
 
@@ -33,7 +33,7 @@ int main() {
         std::println("{}", deleted);
 
         duck::PinnedPage page3 = duck::make_pinned(pool.new_page(), &pool);
-        std::println("{}: {}", page3.page_id(), static_cast<void*>(page3.data()));
+        std::println("{}: {}", page3.page_id(), static_cast<void*>(page3.data().data()));
 
     } catch (std::exception& e) {
         std::cout << "Exception: " << e.what() << "\n";
