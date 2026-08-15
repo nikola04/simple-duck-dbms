@@ -2,7 +2,6 @@
 
 #include "duck/buffer/page.hpp"
 #include "duck/buffer/pool_manager.hpp"
-#include "duck/storage/disk_manager.hpp"
 #include <cstddef>
 
 namespace duck {
@@ -51,6 +50,10 @@ public:
         if (!valid())
             return std::span<std::byte>{};
         return page_->data();
+    }
+
+    Page* page() const {
+        return page_;
     }
 
 private:

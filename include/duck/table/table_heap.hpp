@@ -13,7 +13,7 @@ namespace duck {
 
 class TableHeap {
 public:
-    TableHeap(BufferPoolManager& bpm, PageID first_page_id) : bpm_(bpm), first_page_id_(first_page_id) {
+    TableHeap(PageID first_page_id, BufferPoolManager& bpm) : bpm_(bpm), first_page_id_(first_page_id) {
     }
 
     static TableHeap create(BufferPoolManager& bpm);

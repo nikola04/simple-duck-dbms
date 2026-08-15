@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../common/rid.hpp"
+#include "duck/common/types.hpp"
 #include <cstddef>
 #include <cstdint>
 #include <optional>
@@ -31,6 +32,9 @@ public:
 
     std::int32_t free_space_bytes() const;
     void compact();
+
+    void set_next_page(PageID page_id);
+    PageID next_page() const;
 
 private:
     std::span<std::byte> data_;

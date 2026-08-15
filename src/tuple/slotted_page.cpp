@@ -93,4 +93,12 @@ void SlottedPage::compact() {
     // compact tuples
 }
 
+void SlottedPage::set_next_page(PageID page_id) {
+    header_->next_page_id = page_id;
+}
+
+PageID SlottedPage::next_page() const {
+    return header_->next_page_id;
+}
+
 } // namespace duck
