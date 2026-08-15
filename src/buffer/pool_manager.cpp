@@ -1,7 +1,6 @@
 #include "duck/buffer/pool_manager.hpp"
 #include "duck/buffer/replacer.hpp"
 #include "duck/storage/disk_manager.hpp"
-#include <iostream>
 #include <memory>
 #include <mutex>
 #include <shared_mutex>
@@ -108,8 +107,6 @@ Page* BufferPoolManager::swap_page(PageID page_id, bool read_from_disk) {
 
 void BufferPoolManager::unpin_page(const PageID page_id, bool dirty) {
     std::shared_lock<std::shared_mutex> lock{latch_};
-
-    std::cout << "unpinning: " << page_id << " " << dirty << "\n";
 
     if (const auto it = page_table_.find(page_id); it != page_table_.end()) {
         FrameID frame_id = it->second;

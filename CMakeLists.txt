@@ -79,6 +79,7 @@ if(DUCK_BUILD_TESTS)
       test/storage/disk_manager_test.cpp
       test/buffer/buffer_pool_manager_test.cpp
       test/tuple/slotted_page_test.cpp
+      test/table/table_heap_test.cpp
   )
   target_link_libraries(duck_tests PRIVATE duck_storage duck_buffer duck_tuple duck_table GTest::gtest_main)
   include(GoogleTest)
