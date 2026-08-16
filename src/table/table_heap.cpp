@@ -1,9 +1,11 @@
 #include "duck/table/table_heap.hpp"
 #include "duck/buffer/page.hpp"
 #include "duck/buffer/pinned_page.hpp"
+#include "duck/common/rid.hpp"
 #include "duck/common/types.hpp"
 #include "duck/tuple/slotted_page.hpp"
 #include <cstddef>
+#include <cstdint>
 #include <mutex>
 #include <optional>
 #include <ranges>
@@ -14,7 +16,7 @@
 namespace duck {
 
 TableHeap TableHeap::create(BufferPoolManager& bpm) {
-    duck::PinnedPage page = duck::make_pinned(bpm.new_page(), &bpm);
+    duck::PinnedPage page{duck::make_pinned(bpm.new_page(), &bpm)};
     if (!page.valid())
         throw std::runtime_error("TableHeap: failed to create next page");
 
@@ -89,11 +91,11 @@ std::optional<std::vector<std::byte>> TableHeap::get_tuple(RID rid) {
 
         SlottedPage slotted{page->data()};
 
-        std::span<std::byte> view{slotted.get_tuple(rid.slot_num)};
+        std::span<const std::byte> view{slotted.get_tuple(rid.slot_num)};
         if (view.empty())
             return std::nullopt;
 
-        std::vector<std::byte> tuple(std::from_range, view);
+        std::vector<std::byte> tuple{std::from_range, view};
         return tuple;
     }
 
@@ -112,6 +114,86 @@ bool TableHeap::delete_tuple(RID rid) {
             pinned.mark_dirty();
 
         return deleted;
+    }
+
+    return false;
+}
+
+TableHeap::Scan TableHeap::scan() {
+    return {first_page_id_, &bpm_};
+}
+
+TableHeap::Scan::Scan(PageID first_page_id, BufferPoolManager* bpm)
+    : bpm_(bpm), current_rid_(RID{.page_id = first_page_id, .slot_num = 0}) {
+    current_page_ = bpm->fetch_page(first_page_id);
+}
+
+TableHeap::Scan::~Scan() {
+    if (current_page_ != nullptr)
+        bpm_->unpin_page(current_page_->page_id(), false);
+}
+
+std::optional<std::pair<RID, std::vector<std::byte>>> TableHeap::Scan::next() {
+    while (current_page_ != nullptr) {
+        std::shared_lock<std::shared_mutex> lock{current_page_->latch()};
+        SlottedPage slotted{current_page_->data()};
+
+        // try to find next occupied because current became deleted:
+        if (!slotted.has_slot(current_rid_.slot_num)) {
+            std::optional<std::uint16_t> next_slot{slotted.next_occupied_slot(current_rid_.slot_num)};
+            if (next_slot.has_value()) {
+                current_rid_.slot_num = next_slot.value();
+            }
+        }
+
+        // if we didnt find next occupied on that page we try to switch to next page:
+        if (!slotted.has_slot(current_rid_.slot_num)) {
+            lock.unlock();
+
+            if (next_page())
+                continue; // -> repeat same logic for next page
+            else
+                return std::nullopt;
+        }
+
+        std::span<const std::byte> view{slotted.get_tuple(current_rid_.slot_num)};
+        std::vector<std::byte> tuple{std::from_range, view};
+        RID rid = current_rid_;
+
+        current_rid_.slot_num++;
+
+        return std::pair{rid, tuple};
+    }
+
+    return std::nullopt;
+}
+
+bool TableHeap::Scan::next_page() {
+
+    if (current_page_ == nullptr)
+        return false;
+
+    // release current page
+    PageID next_page_id;
+    {
+        std::shared_lock<std::shared_mutex> lock{current_page_->latch()};
+        SlottedPage slotted{current_page_->data()};
+
+        if (!slotted.has_next_page())
+            return false;
+
+        next_page_id = slotted.next_page();
+    }
+    bpm_->unpin_page(current_page_->page_id(), false);
+
+    // fetch next one
+    if (Page* next_page = bpm_->fetch_page(next_page_id); next_page != nullptr) {
+        current_page_ = next_page;
+
+        current_rid_.page_id = current_page_->page_id();
+        current_rid_.slot_num = 0;
+
+        return true;
     }
 
     return false;

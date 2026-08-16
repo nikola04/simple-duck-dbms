@@ -9,6 +9,8 @@
 
 namespace duck {
 
+inline constexpr std::uint16_t INVALID_SLOT_OFFSET = 0;
+
 struct [[gnu::packed]] PageHeader {
     PageID next_page_id;
     std::uint16_t slot_count;
@@ -35,6 +37,10 @@ public:
 
     void set_next_page(PageID page_id);
     PageID next_page() const;
+
+    bool has_slot(std::uint16_t slot_num);
+    std::optional<std::uint16_t> next_occupied_slot(std::uint16_t slot_num);
+    bool has_next_page();
 
 private:
     std::span<std::byte> data_;

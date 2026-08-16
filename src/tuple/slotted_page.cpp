@@ -1,4 +1,5 @@
 #include "duck/tuple/slotted_page.hpp"
+#include "duck/common/types.hpp"
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
@@ -25,7 +26,7 @@ std::int32_t SlottedPage::free_space_bytes() const {
 std::optional<std::uint16_t> SlottedPage::find_empty_slot() const {
     for (uint16_t i{0}; i < header_->slot_count; i++) {
         Slot& slot{slots_[i]};
-        if (slot.length == 0)
+        if (slot.offset == INVALID_SLOT_OFFSET)
             return {i};
     }
 
@@ -34,7 +35,7 @@ std::optional<std::uint16_t> SlottedPage::find_empty_slot() const {
 
 std::uint16_t SlottedPage::allocate_slot() {
     uint16_t slot_idx = header_->slot_count++;
-    slots_[slot_idx].length = 0;
+    slots_[slot_idx].offset = INVALID_SLOT_OFFSET;
     return slot_idx;
 }
 
@@ -72,7 +73,7 @@ std::span<std::byte> SlottedPage::get_tuple(std::uint16_t slot_num) {
         return {};
 
     Slot& slot = slots_[slot_num];
-    if (slot.length == 0)
+    if (slot.offset == INVALID_SLOT_OFFSET)
         return {};
 
     return data_.subspan(slot.offset, slot.length);
@@ -82,10 +83,10 @@ bool SlottedPage::delete_tuple(std::uint16_t slot_num) {
     if (slot_num >= header_->slot_count)
         return false;
 
-    if (slots_[slot_num].length == 0)
+    if (slots_[slot_num].offset == INVALID_SLOT_OFFSET)
         return false;
 
-    slots_[slot_num].length = 0;
+    slots_[slot_num].offset = INVALID_SLOT_OFFSET;
     return true;
 }
 
@@ -99,6 +100,24 @@ void SlottedPage::set_next_page(PageID page_id) {
 
 PageID SlottedPage::next_page() const {
     return header_->next_page_id;
+}
+
+bool SlottedPage::has_slot(std::uint16_t slot_num) {
+    return slot_num < header_->slot_count && slots_[slot_num].offset != INVALID_SLOT_OFFSET;
+}
+
+std::optional<std::uint16_t> SlottedPage::next_occupied_slot(std::uint16_t slot_num) {
+    ++slot_num;
+    for (; slot_num < header_->slot_count; ++slot_num) {
+        if (slots_[slot_num].offset != INVALID_SLOT_OFFSET)
+            return slot_num;
+    }
+
+    return std::nullopt;
+}
+
+bool SlottedPage::has_next_page() {
+    return header_->next_page_id != INVALID_PAGE_ID;
 }
 
 } // namespace duck
