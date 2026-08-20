@@ -45,6 +45,7 @@ target_link_libraries(duck_buffer PUBLIC Threads::Threads)
 add_library(duck_tuple
     src/tuple/tuple.cpp
     src/tuple/schema.cpp
+    src/tuple/column.cpp
     src/tuple/value.cpp
 )
 target_include_directories(duck_tuple PUBLIC include)
@@ -83,6 +84,8 @@ if(DUCK_BUILD_TESTS)
       test/buffer/buffer_pool_manager_test.cpp
       test/table/slotted_page_test.cpp
       test/table/table_heap_test.cpp
+      test/tuple/tuple_test.cpp
+      test/tuple/schema_column_test.cpp
   )
   target_link_libraries(duck_tests PRIVATE duck_storage duck_table GTest::gtest_main)
   include(GoogleTest)
