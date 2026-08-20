@@ -13,7 +13,7 @@ class Table {
 public:
     explicit Table(TableHeap& table_heap, const Schema& schema);
 
-    std::optional<RID> insert_tuple(Tuple& tuple);
+    std::optional<RID> insert_tuple(const Tuple& tuple);
     std::optional<Tuple> get_tuple(RID rid) const;
     bool delete_tuple(RID rid);
 

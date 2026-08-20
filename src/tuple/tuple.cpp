@@ -23,9 +23,9 @@ Tuple::Tuple(std::vector<Value> values, const Schema& schema) : schema_(schema),
     for (size_t i{0}; i < values_.size(); ++i) {
         const Value& v{values_[i]};
         const Column& c{schema_.column(i)};
-        if (v.type() != type_id_to_value_type(c.type))
+        if (v.type() != type_id_to_value_type(c.type()))
             throw std::runtime_error(std::format("Tuple::Tuple: value type {} is not supported by column type {}",
-                                                 static_cast<int>(v.type()), static_cast<int>(c.type)));
+                                                 static_cast<int>(v.type()), static_cast<int>(c.type())));
     }
 }
 
@@ -44,7 +44,7 @@ std::vector<Value> Tuple::deserialize(std::span<const std::byte> raw) {
 Value Tuple::deserialize_value(std::span<const std::byte> raw, const std::vector<std::uint16_t>& offsets,
                                size_t column_index) {
     if (bool is_null{NullBitmap::is_null(raw, column_index)}; is_null) {
-        return Value::null(type_id_to_value_type(schema_.column(column_index).type));
+        return Value::null(type_id_to_value_type(schema_.column(column_index).type()));
     }
 
     std::uint16_t offset = offsets[column_index];
@@ -58,7 +58,7 @@ Value Tuple::deserialize_value(std::span<const std::byte> raw, const std::vector
 
     std::span<const std::byte> value_bytes{raw.subspan(offset, size)};
 
-    switch (column.type) {
+    switch (column.type()) {
     case TypeId::INT32: {
         std::array<std::byte, 4> bytes;
         std::memcpy(bytes.data(), value_bytes.data(), 4);
@@ -130,31 +130,35 @@ std::vector<std::byte> Tuple::serialize() const {
 
         if (values_[i].is_null()) {
             // space needs to be reserved anyway
-        } else if (column.type == TypeId::CHAR || column.type == TypeId::VARCHAR) {
+        } else if (column.type() == TypeId::CHAR || column.type() == TypeId::VARCHAR) {
             size_t value_size = values_[i].serialized_size();
             // column.length -> CHAR=SIZE, VARCHAR=MAX_SIZE
-            if (value_size > column.length)
+            if (value_size > column.length())
                 throw std::runtime_error(
                     std::format("Tuple::serialize: value size exceeds column's size (value: {}, column: {}, type: {})",
-                                value_size, column.length, static_cast<uint16_t>(column.type)));
+                                value_size, column.length(), static_cast<uint16_t>(column.type())));
         }
 
         if (column.is_fixed_size()) {
             std::uint16_t fixed{schema_.fixed_size_of(i)};
-
             std::size_t before = out.size();
-            values_[i].serialize_to(out);
-            std::size_t written = out.size() - before;
+
+            if (!values_[i].is_null())
+                values_[i].serialize_to(out);
 
             // add padding if needed
+            std::size_t written = out.size() - before;
             if (written < fixed) {
                 out.resize(out.size() + (fixed - written), std::byte{0});
             }
         } else {
-            auto size_bytes{
-                std::bit_cast<std::array<std::byte, 2>>(static_cast<uint16_t>(values_[i].serialized_size()))};
+            std::uint16_t len = values_[i].is_null() ? 0 : static_cast<std::uint16_t>(values_[i].serialized_size());
+            auto size_bytes{std::bit_cast<std::array<std::byte, 2>>(len)};
             out.insert(out.end(), size_bytes.begin(), size_bytes.end());
-            values_[i].serialize_to(out);
+
+            if (!values_[i].is_null()) {
+                values_[i].serialize_to(out);
+            }
         }
     }
 

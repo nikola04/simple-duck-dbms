@@ -8,7 +8,7 @@ namespace duck {
 Table::Table(TableHeap& table_heap, const Schema& schema) : table_heap_(table_heap), schema_(schema) {
 }
 
-std::optional<RID> Table::insert_tuple(Tuple& tuple) {
+std::optional<RID> Table::insert_tuple(const Tuple& tuple) {
     if (!schema_.compatible_with(tuple.schema()))
         throw std::runtime_error("Table::insert_tuple: schemas not compatible");
 

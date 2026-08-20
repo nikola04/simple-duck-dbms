@@ -23,7 +23,7 @@ public:
         return schema_;
     }
     Value get(size_t column_index) const {
-        return values_[column_index];
+        return values_.at(column_index);
     }
 
     std::vector<std::byte> serialize() const;

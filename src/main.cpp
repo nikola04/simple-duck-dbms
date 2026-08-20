@@ -9,9 +9,9 @@
 #include "duck/table/table_heap.hpp"
 #include "duck/tuple/schema.hpp"
 #include "duck/tuple/tuple.hpp"
-#include "duck/tuple/value.hpp"
 #include <cstddef>
 #include <exception>
+#include <iomanip>
 #include <iostream>
 #include <print>
 #include <string>
@@ -38,14 +38,22 @@ int main() {
         // }
 
         std::vector<duck::Column> columns{duck::Column{"ID", duck::TypeId::INT32},
-                                          duck::Column{"string", duck::TypeId::FLOAT},
+                                          duck::Column{"Float", duck::TypeId::FLOAT},
                                           duck::Column{"string", duck::TypeId::VARCHAR, 50}};
         duck::Schema schema{columns};
         duck::Table table{heap, schema};
 
-        std::vector<duck::Value> values{duck::Value::of(234), duck::Value::of((float)0.41),
-                                        duck::Value::of(std::string{"Ovo je vec neki drugi string"})};
+        auto serialized = schema.serialize();
+        // for (auto b : serialized) {
+        //     std::cout << std::hex << std::setw(2) << std::setfill('0') <<
+        //     static_cast<int>(std::to_integer<uint8_t>(b))
+        //               << " ";
+        // }
+        // std::cout << std::endl;
+        std::println("{}", duck::Schema{serialized}.to_string());
 
+        // std::vector<duck::Value> values{duck::Value::of(234), duck::Value::of((float)0.41),
+        //                                 duck::Value::of(std::string{"Ovo je vec neki drugi string"})};
         // auto new_tuple{duck::Tuple{values, schema}};
         // auto rid{table.insert_tuple(new_tuple)};
         // std::println("Inserted tuple {}/{}", rid->page_id, rid->slot_num);

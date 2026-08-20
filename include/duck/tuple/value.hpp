@@ -1,6 +1,6 @@
 #pragma once
 
-#include "duck/tuple/schema.hpp"
+#include "duck/tuple/column.hpp"
 #include <cstddef>
 #include <cstdint>
 #include <stdexcept>

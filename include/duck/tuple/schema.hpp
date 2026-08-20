@@ -1,40 +1,23 @@
 #pragma once
 
+#include "duck/tuple/column.hpp"
 #include <cstddef>
 #include <cstdint>
+#include <span>
 #include <string>
 #include <vector>
 namespace duck {
 
-enum class TypeId : std::uint16_t {
-    INT32,
-    FLOAT,
-    BOOL,
-    CHAR,
-    VARCHAR,
-};
-
-struct Column {
-    std::string name;
-    TypeId type;
-    std::uint16_t length{0}; // fixed size for CHAR; ignored/max-hint for VARCHAR; 0 for INT32/FLOAT/BOOL
-
-    bool is_fixed_size() const {
-        return type == TypeId::INT32 || type == TypeId::FLOAT || type == TypeId::BOOL || type == TypeId::CHAR;
-    }
-
-    bool operator==(const Column& other) const {
-        return type == other.type && length == other.length && name == other.name;
-    }
-};
-
+// [column_count..2 bytes] [COLUMN...]
 class Schema {
 public:
     explicit Schema(std::vector<Column> columns) : columns_(std::move(columns)) {
     }
+    Schema(std::span<const std::byte> raw) : columns_(deserialize(raw)) {
+    }
 
     const Column& column(size_t index) const {
-        return columns_[index];
+        return columns_.at(index);
     }
 
     size_t column_count() const {
@@ -44,10 +27,14 @@ public:
     std::uint16_t fixed_size_of(size_t index) const;
     bool compatible_with(const Schema& other) const;
 
+    std::vector<std::byte> serialize() const;
+
     std::string to_string() const; // debug method
 
 private:
     std::vector<Column> columns_;
+
+    static std::vector<Column> deserialize(std::span<const std::byte> raw);
 };
 
 } // namespace duck
