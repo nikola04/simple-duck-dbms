@@ -44,6 +44,8 @@ target_link_libraries(duck_buffer PUBLIC Threads::Threads)
 # duck_tuple
 add_library(duck_tuple
     src/tuple/tuple.cpp
+    src/tuple/schema.cpp
+    src/tuple/value.cpp
     src/tuple/slotted_page.cpp
 )
 target_include_directories(duck_tuple PUBLIC include)

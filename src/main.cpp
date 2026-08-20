@@ -6,10 +6,17 @@
 #include "duck/buffer/pool_manager.hpp"
 #include "duck/storage/disk_manager.hpp"
 #include "duck/table/table_heap.hpp"
+#include "duck/tuple/schema.hpp"
+#include "duck/tuple/tuple.hpp"
+#include "duck/tuple/value.hpp"
+#include <charconv>
 #include <cstddef>
 #include <exception>
+#include <iomanip>
 #include <iostream>
 #include <print>
+#include <string>
+#include <vector>
 
 int main() {
     try {
@@ -26,10 +33,26 @@ int main() {
         // std::span<std::byte> value{barr};
         // heap.insert_tuple(value);
 
-        duck::TableHeap::Scan scan = heap.scan();
-        while (auto entry = scan.next()) {
-            std::println("RID: {}/{}, size: {}", entry->first.page_id, entry->first.slot_num, entry->second.size());
-        }
+        // duck::TableHeap::Scan scan = heap.scan();
+        // while (auto entry = scan.next()) {
+        //     std::println("RID: {}/{}, size: {}", entry->first.page_id, entry->first.slot_num, entry->second.size());
+        // }
+
+        std::vector<duck::Column> columns{duck::Column{"ID", duck::TypeId::INT32},
+                                          duck::Column{"string", duck::TypeId::FLOAT},
+                                          duck::Column{"string", duck::TypeId::VARCHAR, 50}};
+        duck::Schema schema{columns};
+
+        std::vector<duck::Value> values{duck::Value::of(123), duck::Value::of((float)0.32),
+                                        duck::Value::of(std::string{"test string lmao"})};
+
+        duck::Tuple tuple{values, schema};
+        auto serialized{tuple.serialize()};
+        duck::Tuple new_tuple{serialized, schema};
+
+        duck::Value value{new_tuple.get(1)};
+
+        std::println("Value: {}", value.as_float());
 
     } catch (std::exception& e) {
         std::cout << "Exception: " << e.what() << "\n";
