@@ -1,7 +1,6 @@
 #pragma once
 
 #include "duck/buffer/page.hpp"
-#include "duck/storage/disk_manager.hpp"
 #include <list>
 #include <unordered_map>
 

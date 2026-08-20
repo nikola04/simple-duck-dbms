@@ -1,5 +1,4 @@
 #include "duck/buffer/replacer.hpp"
-#include "duck/storage/disk_manager.hpp"
 
 namespace duck {
 

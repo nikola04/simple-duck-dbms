@@ -9,10 +9,8 @@
 #include "duck/tuple/schema.hpp"
 #include "duck/tuple/tuple.hpp"
 #include "duck/tuple/value.hpp"
-#include <charconv>
 #include <cstddef>
 #include <exception>
-#include <iomanip>
 #include <iostream>
 #include <print>
 #include <string>

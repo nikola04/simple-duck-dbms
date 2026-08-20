@@ -8,7 +8,6 @@
 #include <cstdint>
 #include <cstring>
 #include <format>
-#include <iostream>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -163,7 +162,6 @@ std::vector<std::byte> Tuple::serialize() const {
 }
 
 std::bitset<8> NullBitmap::get_bitset(std::span<const std::byte> bitmap, std::size_t column) {
-    std::cout << bitmap.size() << "\n";
     std::byte byte = bitmap[column / 8];
 
     std::bitset<8> bits{std::to_integer<unsigned char>(byte)};

@@ -46,12 +46,12 @@ add_library(duck_tuple
     src/tuple/tuple.cpp
     src/tuple/schema.cpp
     src/tuple/value.cpp
-    src/tuple/slotted_page.cpp
 )
 target_include_directories(duck_tuple PUBLIC include)
 
 # duck_table
 add_library(duck_table
+    src/table/slotted_page.cpp
     src/table/table_heap.cpp
 )
 target_include_directories(duck_table PUBLIC include)
@@ -80,7 +80,7 @@ if(DUCK_BUILD_TESTS)
   add_executable(duck_tests
       test/storage/disk_manager_test.cpp
       test/buffer/buffer_pool_manager_test.cpp
-      test/tuple/slotted_page_test.cpp
+      test/table/slotted_page_test.cpp
       test/table/table_heap_test.cpp
   )
   target_link_libraries(duck_tests PRIVATE duck_storage duck_table GTest::gtest_main)

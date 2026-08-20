@@ -1,10 +1,12 @@
 #pragma once
 
+#include "duck/common/types.hpp"
 #include "duck/config/sizes.hpp"
-#include "duck/storage/disk_manager.hpp"
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <shared_mutex>
+#include <span>
 
 namespace duck {
 

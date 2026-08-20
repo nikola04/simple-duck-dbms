@@ -1,6 +1,5 @@
 #include "duck/buffer/page.hpp"
 #include "duck/config/sizes.hpp"
-#include "duck/storage/disk_manager.hpp"
 #include <cstring>
 
 namespace duck {

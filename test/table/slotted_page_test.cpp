@@ -1,5 +1,5 @@
 #include "duck/config/sizes.hpp"
-#include "duck/tuple/slotted_page.hpp"
+#include "duck/table/slotted_page.hpp"
 #include "gtest/gtest.h"
 
 class SlottedPageTest : public ::testing::Test {

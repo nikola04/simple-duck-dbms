@@ -3,7 +3,7 @@
 #include "duck/buffer/pinned_page.hpp"
 #include "duck/common/rid.hpp"
 #include "duck/common/types.hpp"
-#include "duck/tuple/slotted_page.hpp"
+#include "duck/table/slotted_page.hpp"
 #include <cstddef>
 #include <cstdint>
 #include <mutex>
