@@ -27,6 +27,7 @@ public:
     }
 
     std::vector<std::byte> serialize() const;
+    std::string to_string() const; // debug helper
 
 private:
     const Schema& schema_;

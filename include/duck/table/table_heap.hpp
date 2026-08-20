@@ -39,6 +39,30 @@ public:
     Scan(const Scan&) = delete;
     Scan& operator=(const Scan&) = delete;
 
+    Scan(Scan&& other) noexcept
+        : bpm_(other.bpm_), current_rid_(other.current_rid_), current_page_(other.current_page_) {
+
+        other.current_page_ = nullptr;
+        other.bpm_ = nullptr;
+    }
+
+    Scan& operator=(Scan&& other) noexcept {
+        if (this == &other)
+            return *this;
+
+        if (current_page_ != nullptr)
+            bpm_->unpin_page(current_page_->page_id(), false);
+
+        bpm_ = other.bpm_;
+        current_rid_ = other.current_rid_;
+        current_page_ = other.current_page_;
+
+        other.current_page_ = nullptr;
+        other.bpm_ = nullptr;
+
+        return *this;
+    }
+
     bool operator==(const Scan& other) {
         return current_rid_ == other.current_rid_;
     }

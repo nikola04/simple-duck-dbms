@@ -57,6 +57,22 @@ const std::string& Value::as_string() const {
     return std::get<std::string>(data_);
 }
 
+std::string Value::to_string() const {
+    if (is_null_)
+        return "null";
+
+    switch (type_) {
+    case ValueType::INT32:
+        return std::to_string(as_int32());
+    case ValueType::FLOAT:
+        return std::to_string(as_float());
+    case ValueType::BOOL:
+        return as_bool() ? "true" : "false";
+    case ValueType::STRING:
+        return as_string();
+    }
+}
+
 std::size_t Value::serialized_size() const {
     switch (type_) {
     case ValueType::INT32:

@@ -46,6 +46,8 @@ public:
     bool as_bool() const;
     const std::string& as_string() const;
 
+    std::string to_string() const;
+
     std::size_t serialized_size() const;
     void serialize_to(std::vector<std::byte>& out) const;
 

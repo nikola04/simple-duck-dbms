@@ -22,6 +22,10 @@ struct Column {
     bool is_fixed_size() const {
         return type == TypeId::INT32 || type == TypeId::FLOAT || type == TypeId::BOOL || type == TypeId::CHAR;
     }
+
+    bool operator==(const Column& other) const {
+        return type == other.type && length == other.length && name == other.name;
+    }
 };
 
 class Schema {
@@ -38,6 +42,9 @@ public:
     }
 
     std::uint16_t fixed_size_of(size_t index) const;
+    bool compatible_with(const Schema& other) const;
+
+    std::string to_string() const; // debug method
 
 private:
     std::vector<Column> columns_;

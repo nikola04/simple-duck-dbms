@@ -161,6 +161,17 @@ std::vector<std::byte> Tuple::serialize() const {
     return out;
 }
 
+std::string Tuple::to_string() const {
+    std::string s;
+    size_t n{schema_.column_count()};
+    for (size_t i{0}; i < n; ++i) {
+        s += get(i).to_string();
+        if (i != n - 1)
+            s += " | ";
+    }
+    return s;
+}
+
 std::bitset<8> NullBitmap::get_bitset(std::span<const std::byte> bitmap, std::size_t column) {
     std::byte byte = bitmap[column / 8];
 

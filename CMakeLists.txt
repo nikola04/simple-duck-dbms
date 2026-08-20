@@ -53,6 +53,7 @@ target_include_directories(duck_tuple PUBLIC include)
 add_library(duck_table
     src/table/slotted_page.cpp
     src/table/table_heap.cpp
+    src/table/table.cpp
 )
 target_include_directories(duck_table PUBLIC include)
 target_link_libraries(duck_table PUBLIC duck_tuple duck_buffer)

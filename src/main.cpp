@@ -5,6 +5,7 @@
 
 #include "duck/buffer/pool_manager.hpp"
 #include "duck/storage/disk_manager.hpp"
+#include "duck/table/table.hpp"
 #include "duck/table/table_heap.hpp"
 #include "duck/tuple/schema.hpp"
 #include "duck/tuple/tuple.hpp"
@@ -40,17 +41,28 @@ int main() {
                                           duck::Column{"string", duck::TypeId::FLOAT},
                                           duck::Column{"string", duck::TypeId::VARCHAR, 50}};
         duck::Schema schema{columns};
+        duck::Table table{heap, schema};
 
-        std::vector<duck::Value> values{duck::Value::of(123), duck::Value::of((float)0.32),
-                                        duck::Value::of(std::string{"test string lmao"})};
+        std::vector<duck::Value> values{duck::Value::of(234), duck::Value::of((float)0.41),
+                                        duck::Value::of(std::string{"Ovo je vec neki drugi string"})};
 
-        duck::Tuple tuple{values, schema};
-        auto serialized{tuple.serialize()};
-        duck::Tuple new_tuple{serialized, schema};
+        // auto new_tuple{duck::Tuple{values, schema}};
+        // auto rid{table.insert_tuple(new_tuple)};
+        // std::println("Inserted tuple {}/{}", rid->page_id, rid->slot_num);
 
-        duck::Value value{new_tuple.get(1)};
+        // auto tuple{table.get_tuple({0, 0})};
 
-        std::println("Value: {}", value.as_float());
+        std::println("{}", schema.to_string());
+        auto scan{table.scan()};
+        while (auto entry{scan.next()}) {
+            if (entry.has_value()) {
+                duck::Tuple tuple{entry.value().second};
+                // duck::Value value{tuple.get(2)};
+                std::println("{}", tuple.to_string());
+            } else {
+                std::println("Tuple not found");
+            }
+        }
 
     } catch (std::exception& e) {
         std::cout << "Exception: " << e.what() << "\n";
