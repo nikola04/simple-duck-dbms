@@ -1,4 +1,5 @@
 #include "duck/tuple/schema.hpp"
+#include "duck/tuple/column.hpp"
 #include <algorithm>
 #include <array>
 #include <bit>
@@ -13,15 +14,20 @@ namespace duck {
 
 std::uint16_t Schema::fixed_size_of(size_t index) const {
     switch (const Column& column{this->column(index)}; column.type()) {
-    case TypeId::BOOL:
-        return 1;
+    case TypeId::INT64:
+    case TypeId::UINT64:
+    case TypeId::DOUBLE:
+        return 8;
+    case TypeId::INT32:
+    case TypeId::UINT32:
     case TypeId::FLOAT:
         return 4;
-    case TypeId::INT32:
-        return 4;
+    case TypeId::BOOL:
+        return 1;
     case TypeId::CHAR:
         return column.length();
     case TypeId::VARCHAR:
+    case TypeId::VARBINARY:
         return 0;
     }
     throw std::runtime_error("Schema::fixed_size_of: unknown typeId");
@@ -87,14 +93,29 @@ std::string Schema::to_string() const {
         case TypeId::INT32:
             s += "INT32";
             break;
+        case TypeId::UINT32:
+            s += "UINT32";
+            break;
+        case TypeId::INT64:
+            s += "INT64";
+            break;
+        case TypeId::UINT64:
+            s += "UINT64";
+            break;
         case TypeId::FLOAT:
             s += "FLOAT";
+            break;
+        case TypeId::DOUBLE:
+            s += "DOUBLE";
             break;
         case TypeId::BOOL:
             s += "BOOL";
             break;
         case TypeId::VARCHAR:
             s += "VARCHAR";
+            break;
+        case TypeId::VARBINARY:
+            s += "VARBINARY";
             break;
         case TypeId::CHAR:
             s += "CHAR(" + std::to_string(columns_[i].length()) + ")";

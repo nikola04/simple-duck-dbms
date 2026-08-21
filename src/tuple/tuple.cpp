@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <cstring>
 #include <format>
+#include <ranges>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -59,10 +60,30 @@ Value Tuple::deserialize_value(std::span<const std::byte> raw, const std::vector
     std::span<const std::byte> value_bytes{raw.subspan(offset, size)};
 
     switch (column.type()) {
+    case TypeId::INT64: {
+        std::array<std::byte, 8> bytes;
+        std::memcpy(bytes.data(), value_bytes.data(), 8);
+        return Value::of(std::bit_cast<std::int64_t>(bytes));
+    }
+    case TypeId::UINT64: {
+        std::array<std::byte, 8> bytes;
+        std::memcpy(bytes.data(), value_bytes.data(), 8);
+        return Value::of(std::bit_cast<std::uint64_t>(bytes));
+    }
+    case TypeId::DOUBLE: {
+        std::array<std::byte, 8> bytes;
+        std::memcpy(bytes.data(), value_bytes.data(), 8);
+        return Value::of(std::bit_cast<double>(bytes));
+    }
     case TypeId::INT32: {
         std::array<std::byte, 4> bytes;
         std::memcpy(bytes.data(), value_bytes.data(), 4);
         return Value::of(std::bit_cast<std::int32_t>(bytes));
+    }
+    case TypeId::UINT32: {
+        std::array<std::byte, 4> bytes;
+        std::memcpy(bytes.data(), value_bytes.data(), 4);
+        return Value::of(std::bit_cast<std::uint32_t>(bytes));
     }
     case TypeId::FLOAT: {
         std::array<std::byte, 4> bytes;
@@ -85,9 +106,11 @@ Value Tuple::deserialize_value(std::span<const std::byte> raw, const std::vector
     case TypeId::VARCHAR: {
         return Value::of(std::string(reinterpret_cast<const char*>(value_bytes.data()), value_bytes.size()));
     }
-    default:
-        throw std::runtime_error("Tuple::get: unknown TypeId");
+    case TypeId::VARBINARY: {
+        return Value::of(std::vector<std::byte>{std::from_range, value_bytes});
     }
+    }
+    throw std::runtime_error("Tuple::get: unknown TypeId");
 }
 
 std::vector<std::uint16_t> Tuple::compute_offsets(std::span<const std::byte> raw) const {
@@ -132,11 +155,24 @@ std::vector<std::byte> Tuple::serialize() const {
             // space needs to be reserved anyway
         } else if (column.type() == TypeId::CHAR || column.type() == TypeId::VARCHAR) {
             size_t value_size = values_[i].serialized_size();
-            // column.length -> CHAR=SIZE, VARCHAR=MAX_SIZE
-            if (value_size > column.length())
-                throw std::runtime_error(
-                    std::format("Tuple::serialize: value size exceeds column's size (value: {}, column: {}, type: {})",
-                                value_size, column.length(), static_cast<uint16_t>(column.type())));
+
+            if (column.type() == TypeId::CHAR && value_size > column.length()) {
+                throw std::runtime_error("Tuple::serialize: CHAR value exceeds defined size");
+            }
+            if (column.type() == TypeId::VARCHAR && column.length() > 0 && value_size > column.length()) {
+                // VARCHAR: length==0 means "unbounded", skip check
+                throw std::runtime_error("Tuple::serialize: VARCHAR value exceeds defined maximum size");
+            }
+            if (column.type() == TypeId::VARCHAR && value_size > 0xFFFF) {
+                throw std::runtime_error("Tuple::serialize: VARCHAR value exceeds 65535-byte protocol limit");
+            }
+            if (column.type() == TypeId::VARBINARY && column.length() > 0 && value_size > column.length()) {
+                // VARCHAR: length==0 means "unbounded", skip check
+                throw std::runtime_error("Tuple::serialize: VARBINARY value exceeds defined maximum size");
+            }
+            if (column.type() == TypeId::VARBINARY && value_size > 0xFFFF) {
+                throw std::runtime_error("Tuple::serialize: VARBINARY value exceeds 65535-byte protocol limit");
+            }
         }
 
         if (column.is_fixed_size()) {

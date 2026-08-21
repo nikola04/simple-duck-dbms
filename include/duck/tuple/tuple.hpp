@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <span>
+#include <string_view>
 #include <vector>
 namespace duck {
 
@@ -24,6 +25,13 @@ public:
     }
     Value get(size_t column_index) const {
         return values_.at(column_index);
+    }
+    Value get(std::string_view name) const {
+        auto idx = schema_.column_index(name);
+        if (!idx.has_value())
+            throw std::runtime_error("Tuple::get: no such column: " + std::string(name));
+
+        return values_.at(idx.value());
     }
 
     std::vector<std::byte> serialize() const;

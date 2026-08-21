@@ -39,7 +39,7 @@ add_library(duck_buffer
     src/buffer/replacer.cpp
 )
 target_include_directories(duck_buffer PUBLIC include)
-target_link_libraries(duck_buffer PUBLIC Threads::Threads)
+target_link_libraries(duck_buffer PUBLIC Threads::Threads duck_storage)
 
 # duck_tuple
 add_library(duck_tuple
@@ -59,13 +59,17 @@ add_library(duck_table
 target_include_directories(duck_table PUBLIC include)
 target_link_libraries(duck_table PUBLIC duck_tuple duck_buffer)
 
+# duck_catalog
+add_library(duck_catalog
+    src/catalog/catalog.cpp
+)
+target_include_directories(duck_catalog PUBLIC include)
+target_link_libraries(duck_catalog PUBLIC duck_table)
+
 # --- executable ---
 add_executable(duck src/main.cpp)
 target_link_libraries(duck PRIVATE 
-    duck_storage
-    # duck_buffer   # <- transitive
-    # duck_tuple    # <- transitive
-    duck_table
+    duck_catalog
 )
 
 # --- tests ---
@@ -86,8 +90,9 @@ if(DUCK_BUILD_TESTS)
       test/table/table_heap_test.cpp
       test/tuple/tuple_test.cpp
       test/tuple/schema_column_test.cpp
+      test/catalog/catalog_test.cpp
   )
-  target_link_libraries(duck_tests PRIVATE duck_storage duck_table GTest::gtest_main)
+  target_link_libraries(duck_tests PRIVATE duck_catalog GTest::gtest_main)
   include(GoogleTest)
   gtest_discover_tests(duck_tests)
 endif()

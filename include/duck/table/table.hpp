@@ -5,23 +5,33 @@
 #include "duck/tuple/schema.hpp"
 #include "duck/tuple/tuple.hpp"
 #include <optional>
+#include <string_view>
 #include <utility>
 
 namespace duck {
 
 class Table {
 public:
-    explicit Table(TableHeap& table_heap, const Schema& schema);
+    explicit Table(std::string name, TableHeap table_heap, const Schema& schema);
 
     std::optional<RID> insert_tuple(const Tuple& tuple);
-    std::optional<Tuple> get_tuple(RID rid) const;
+    std::optional<Tuple> get_tuple(RID rid);
     bool delete_tuple(RID rid);
+
+    std::string_view name() const {
+        return name_;
+    }
+    const Schema& schema() const {
+        return schema_;
+    }
 
     class Scan;
     Scan scan() const;
 
 private:
-    TableHeap& table_heap_;
+    std::string name_;
+
+    TableHeap table_heap_;
     const Schema& schema_;
 };
 

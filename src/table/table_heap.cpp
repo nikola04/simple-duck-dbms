@@ -32,7 +32,12 @@ TableHeap TableHeap::create(BufferPoolManager& bpm) {
 // For now when we need new page we create it unpin it then pin it again in next iteration because of code readability
 // Can be optimized but for now is acceptable
 std::optional<RID> TableHeap::insert_tuple(std::span<const std::byte> tuple_data) {
+    if (tuple_data.size() > kPAGE_SIZE - sizeof(PageHeader) - sizeof(Slot)) {
+        throw std::runtime_error("TableHeap::insert_tuple: tuple exceeds maximum page capacity");
+    }
+
     PageID page_id{first_page_id_};
+    bool created_new_page{false};
     while (Page * page{bpm_.fetch_page(page_id)}) {
         PinnedPage pinned{page, &bpm_};
 
@@ -52,9 +57,15 @@ std::optional<RID> TableHeap::insert_tuple(std::span<const std::byte> tuple_data
         // If someone wants to access memory he will need to wait for unique lock while next page is created
         // Because thread B can start allocating new page while thread A released lock and started allocating it already
         if (PageID next_page_id{slotted.next_page()}; next_page_id == INVALID_PAGE_ID) {
+            if (created_new_page) {
+                throw std::runtime_error(
+                    "TableHeap::insert_tuple: tuple failed to fit even on a freshly created page — "
+                    "this indicates a bug in SlottedPage size accounting");
+            }
             lock.unlock();
 
             Page* next_page = bpm_.new_page();
+            created_new_page = true;
             if (next_page == nullptr)
                 throw std::runtime_error("TableHeap: failed to create next page");
 
@@ -119,7 +130,7 @@ bool TableHeap::delete_tuple(RID rid) {
     return false;
 }
 
-TableHeap::Scan TableHeap::scan() {
+TableHeap::Scan TableHeap::scan() const {
     return {first_page_id_, &bpm_};
 }
 

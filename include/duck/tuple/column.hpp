@@ -7,10 +7,18 @@ namespace duck {
 
 enum class TypeId : std::uint16_t {
     INT32,
+    INT64,
+    UINT32,
+    UINT64,
+
     FLOAT,
+    DOUBLE,
+
     BOOL,
+
     CHAR,
     VARCHAR,
+    VARBINARY
 };
 
 // [name_length..2 bytes]
@@ -40,7 +48,8 @@ public:
     static std::pair<Column, std::uint16_t> deserialize(std::span<const std::byte> raw);
 
     bool is_fixed_size() const {
-        return type_ == TypeId::INT32 || type_ == TypeId::FLOAT || type_ == TypeId::BOOL || type_ == TypeId::CHAR;
+        return type_ == TypeId::INT64 || type_ == TypeId::UINT64 || type_ == TypeId::INT32 || type_ == TypeId::UINT32 ||
+               type_ == TypeId::DOUBLE || type_ == TypeId::FLOAT || type_ == TypeId::BOOL || type_ == TypeId::CHAR;
     }
 
 private:

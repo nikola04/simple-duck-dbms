@@ -1,6 +1,6 @@
 # Simple Duck DBMS
 
-Should be a simple multithreaded Database Managment system build in C++23
+A simple multithreaded Database Managment system build in C++23
 
 ## Architecture
 
@@ -10,6 +10,7 @@ Layered, bottom-up:
 - **`duck_buffer`** — `BufferPoolManager`: fixed-size RAM cache over disk pages, LRU-based eviction, per-page latches (fine-grained locking, independent of the global buffer-pool latch), `PinnedPage` RAII wrapper.
 - **`duck_tuple`** — `SlottedPage` (on-disk page layout for variable-length tuples), `Value`/`Schema`/`Column`/`Tuple` (typed row representation with serialization to/from raw bytes, NULL bitmap, fixed vs. variable-length column handling).
 - **`duck_table`** — `TableHeap` (multi-page tuple storage with page-chain traversal), `Table` (schema-aware wrapper over `TableHeap`), cursor-style `Scan` for sequential iteration.
+- **`duck_catalog`** — `Catalog`: persistent table registry. Bootstraps itself as an ordinary table (via `TableHeap`) rooted at a fixed, well-known page id, storing `{table_name, first_page_id, schema_bytes}` rows for every user-created table. On startup, scans its own page chain to reconstruct in-memory `Table` handles.
 
 Each layer only depends on the one below it; concurrency guarantees (thread-safety, no data races) are verified independently at each layer under ThreadSanitizer.
 

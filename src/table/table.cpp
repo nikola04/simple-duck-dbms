@@ -5,7 +5,8 @@
 
 namespace duck {
 
-Table::Table(TableHeap& table_heap, const Schema& schema) : table_heap_(table_heap), schema_(schema) {
+Table::Table(std::string name, TableHeap table_heap, const Schema& schema)
+    : name_(std::move(name)), table_heap_(std::move(table_heap)), schema_(schema) {
 }
 
 std::optional<RID> Table::insert_tuple(const Tuple& tuple) {
@@ -15,7 +16,7 @@ std::optional<RID> Table::insert_tuple(const Tuple& tuple) {
     return table_heap_.insert_tuple(tuple.serialize());
 }
 
-std::optional<Tuple> Table::get_tuple(RID rid) const {
+std::optional<Tuple> Table::get_tuple(RID rid) {
     auto bytes{table_heap_.get_tuple(rid)};
     if (!bytes.has_value())
         return std::nullopt;

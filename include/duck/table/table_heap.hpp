@@ -21,9 +21,13 @@ public:
     std::optional<std::vector<std::byte>> get_tuple(RID rid);
     bool delete_tuple(RID rid);
 
+    PageID first_page_id() const {
+        return first_page_id_;
+    }
+
     class Scan;
 
-    Scan scan();
+    Scan scan() const;
 
 private:
     BufferPoolManager& bpm_;
