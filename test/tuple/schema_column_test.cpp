@@ -5,9 +5,55 @@
 
 #include "duck/tuple/column.hpp"
 #include "duck/tuple/schema.hpp"
+#include "duck/tuple/tuple.hpp"
+#include "duck/tuple/value.hpp"
 
 #include <gtest/gtest.h>
 #include <vector>
+
+TEST(ValueTest, AllTypesRoundTripThroughTuple) {
+    duck::Schema schema(std::vector<duck::Column>{
+        {"a", duck::TypeId::INT64},
+        {"b", duck::TypeId::UINT64},
+        {"c", duck::TypeId::INT32},
+        {"d", duck::TypeId::UINT32},
+        {"e", duck::TypeId::DOUBLE},
+        {"f", duck::TypeId::FLOAT},
+        {"g", duck::TypeId::BOOL},
+        {"h", duck::TypeId::VARCHAR, 50},
+        {"i", duck::TypeId::CHAR, 10},
+        {"j", duck::TypeId::VARBINARY, 50},
+    });
+
+    std::vector<duck::Value> values{
+        duck::Value::of(std::int64_t{-123}),
+        duck::Value::of(std::uint64_t{456}),
+        duck::Value::of(std::int32_t{-7}),
+        duck::Value::of(std::uint32_t{8}),
+        duck::Value::of(3.14),
+        duck::Value::of(2.5f),
+        duck::Value::of(true),
+        duck::Value::of(std::string("hello")),
+        duck::Value::of(std::string("abc")),
+        duck::Value::of(std::vector<std::byte>{std::byte{1}, std::byte{2}, std::byte{3}}),
+    };
+
+    duck::Tuple original(values, schema);
+    auto bytes = original.serialize();
+    duck::Tuple restored(bytes, schema);
+
+    EXPECT_EQ(restored.get(0).as_int64(), -123);
+    EXPECT_EQ(restored.get(1).as_uint64(), 456u);
+    EXPECT_EQ(restored.get(2).as_int32(), -7);
+    EXPECT_EQ(restored.get(3).as_uint32(), 8u);
+    EXPECT_DOUBLE_EQ(restored.get(4).as_double(), 3.14);
+    EXPECT_FLOAT_EQ(restored.get(5).as_float(), 2.5f);
+    EXPECT_EQ(restored.get(6).as_bool(), true);
+    EXPECT_EQ(restored.get(7).as_string(), "hello");
+    EXPECT_EQ(restored.get(8).as_string(), "abc");
+    ASSERT_EQ(restored.get(9).as_bytes().size(), 3u);
+    EXPECT_EQ(restored.get(9).as_bytes()[0], std::byte{1});
+}
 
 TEST(ColumnTest, RoundTripInt32Column) {
     duck::Column original("id", duck::TypeId::INT32);
