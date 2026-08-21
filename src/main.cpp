@@ -39,7 +39,7 @@ int main() {
             std::println("{}\n{}\n", table.value()->name(), table.value()->schema().to_string());
 
             auto s{std::string()};
-            s.resize(2999, 'c');
+            s.resize(2998, 'c');
             auto values{std::vector<duck::Value>{duck::Value::of((std::uint32_t)1), duck::Value::of(std::move(s))}};
 
             duck::Tuple tuple{values, table.value()->schema()};

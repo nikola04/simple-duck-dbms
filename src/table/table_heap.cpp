@@ -133,9 +133,24 @@ std::optional<RID> TableHeap::update_tuple(RID rid, std::span<const std::byte> t
             pinned.mark_dirty();
             return rid;
         }
-    } // locks released, page unpined
 
-    delete_tuple(rid);
+        if (bool deleted{slotted.delete_tuple(rid.slot_num)}; deleted)
+            pinned.mark_dirty();
+        else
+            return std::nullopt;
+
+        if (!slotted.is_compacted())
+            slotted.compact();
+
+        if (auto rid_opt = slotted.insert_tuple(tuple, rid.slot_num); rid_opt.has_value()) {
+            rid_opt->page_id = page->page_id();
+            pinned.mark_dirty();
+            return rid_opt;
+        }
+    } else
+        return std::nullopt;
+
+    // if made it here, delete_tuple was already called and at last try to insert anywhere
     return insert_tuple(tuple);
 }
 

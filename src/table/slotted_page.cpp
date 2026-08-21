@@ -6,7 +6,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <optional>
-#include <print>
 #include <span>
 #include <vector>
 
@@ -44,7 +43,8 @@ std::uint16_t SlottedPage::allocate_slot() {
     return slot_idx;
 }
 
-std::optional<RID> SlottedPage::insert_tuple(std::span<const std::byte> tuple_data) {
+std::optional<RID> SlottedPage::insert_tuple(std::span<const std::byte> tuple_data,
+                                             std::optional<std::uint16_t> prefered_slot) {
     int16_t available_space = free_space_bytes();
     uint16_t tuple_size = static_cast<uint16_t>(tuple_data.size_bytes());
 
@@ -53,7 +53,10 @@ std::optional<RID> SlottedPage::insert_tuple(std::span<const std::byte> tuple_da
 
     uint16_t slot_idx;
 
-    if (auto slot = find_empty_slot(); slot.has_value())
+    if (prefered_slot.has_value() && prefered_slot < header_->slot_count &&
+        slots_[prefered_slot.value()].offset == INVALID_SLOT_OFFSET)
+        slot_idx = prefered_slot.value();
+    else if (auto slot = find_empty_slot(); slot.has_value())
         slot_idx = slot.value();
     else {
         if (available_space - tuple_size < static_cast<int16_t>(sizeof(Slot)))
@@ -70,7 +73,7 @@ std::optional<RID> SlottedPage::insert_tuple(std::span<const std::byte> tuple_da
     auto dest = data_.subspan(slot->offset, slot->length);
     std::copy(tuple_data.begin(), tuple_data.end(), dest.begin());
 
-    return {{INVALID_PAGE_ID, slot_idx}};
+    return RID{INVALID_PAGE_ID, slot_idx};
 }
 
 std::span<std::byte> SlottedPage::get_tuple(std::uint16_t slot_num) {
@@ -132,7 +135,7 @@ bool SlottedPage::is_compacted() const {
     return next_offset == kPAGE_SIZE;
 }
 
-// can be optimized to copy only from offset which has deleted data till end
+// can be optimized to copy only from offset which has deleted data to end instead all data
 void SlottedPage::compact() {
     PageHeader compacted_header{*header_};
 

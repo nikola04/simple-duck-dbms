@@ -28,7 +28,8 @@ public:
 
     void init();
 
-    std::optional<RID> insert_tuple(std::span<const std::byte> tuple_data);
+    std::optional<RID> insert_tuple(std::span<const std::byte> tuple_data,
+                                    std::optional<std::uint16_t> prefered_slot = std::nullopt);
     std::span<std::byte> get_tuple(std::uint16_t slot_num);
     bool try_update_in_place(RID rid, std::span<const std::byte> tuple_data);
     bool delete_tuple(std::uint16_t slot_num);
