@@ -50,8 +50,14 @@ std::optional<RID> TableHeap::insert_tuple(std::span<const std::byte> tuple_data
             return rid;
         }
 
-        // maybe try to compact here? not implemented for now
-        // slotted.compact();
+        if (!slotted.is_compacted()) {
+            slotted.compact();
+            if (auto rid{slotted.insert_tuple(tuple_data)}; rid.has_value()) {
+                rid->page_id = page->page_id();
+                pinned.mark_dirty();
+                return rid;
+            }
+        }
 
         // For now this will be a trade-off for data consistency
         // If someone wants to access memory he will need to wait for unique lock while next page is created
@@ -111,6 +117,26 @@ std::optional<std::vector<std::byte>> TableHeap::get_tuple(RID rid) {
     }
 
     return std::nullopt;
+}
+
+std::optional<RID> TableHeap::update_tuple(RID rid, std::span<const std::byte> tuple) {
+    if (Page* page{bpm_.fetch_page(rid.page_id)}; page != nullptr) {
+        PinnedPage pinned{page, &bpm_};
+        std::unique_lock<std::shared_mutex> lock{page->latch()};
+
+        SlottedPage slotted{page->data()};
+
+        if (!slotted.has_slot(rid.slot_num))
+            return std::nullopt;
+
+        if (slotted.try_update_in_place(rid, tuple)) {
+            pinned.mark_dirty();
+            return rid;
+        }
+    } // locks released, page unpined
+
+    delete_tuple(rid);
+    return insert_tuple(tuple);
 }
 
 bool TableHeap::delete_tuple(RID rid) {

@@ -1,9 +1,14 @@
 #include "duck/table/slotted_page.hpp"
 #include "duck/common/types.hpp"
+#include "duck/config/sizes.hpp"
 #include <algorithm>
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
+#include <print>
+#include <span>
+#include <vector>
 
 namespace duck {
 
@@ -72,11 +77,30 @@ std::span<std::byte> SlottedPage::get_tuple(std::uint16_t slot_num) {
     if (slot_num >= header_->slot_count)
         return {};
 
-    Slot& slot = slots_[slot_num];
+    const Slot& slot = slots_[slot_num];
     if (slot.offset == INVALID_SLOT_OFFSET)
         return {};
 
     return data_.subspan(slot.offset, slot.length);
+}
+
+bool SlottedPage::try_update_in_place(RID rid, std::span<const std::byte> tuple_data) {
+    if (rid.slot_num >= header_->slot_count)
+        return false;
+
+    Slot& slot = slots_[rid.slot_num];
+    if (slot.offset == INVALID_SLOT_OFFSET)
+        return false;
+
+    std::uint16_t tuple_size{static_cast<std::uint16_t>(tuple_data.size())};
+    if (tuple_size > slot.length)
+        return false;
+
+    auto dest{data_.subspan(slot.offset, tuple_size)};
+    std::copy(tuple_data.begin(), tuple_data.end(), dest.begin());
+    slot.length = tuple_size;
+
+    return true;
 }
 
 bool SlottedPage::delete_tuple(std::uint16_t slot_num) {
@@ -90,8 +114,56 @@ bool SlottedPage::delete_tuple(std::uint16_t slot_num) {
     return true;
 }
 
+bool SlottedPage::is_compacted() const {
+    if (header_->slot_count == 0)
+        return true;
+
+    std::uint16_t next_offset{slots_[0].offset};
+    for (std::uint16_t i{0}; i < header_->slot_count; ++i) {
+        if (slots_[i].offset == INVALID_SLOT_OFFSET)
+            continue;
+
+        if (next_offset != slots_[i].offset)
+            return false;
+
+        next_offset += slots_[i].length;
+    }
+
+    return next_offset == kPAGE_SIZE;
+}
+
+// can be optimized to copy only from offset which has deleted data till end
 void SlottedPage::compact() {
-    // compact tuples
+    PageHeader compacted_header{*header_};
+
+    std::vector<Slot> compacted_slots;
+    compacted_slots.reserve(compacted_header.slot_count);
+
+    std::array<std::byte, kPAGE_SIZE> compacted{};
+    std::uint16_t offset{kPAGE_SIZE};
+
+    for (std::uint16_t i{0}; i < header_->slot_count; ++i) {
+        const Slot& slot{slots_[i]};
+        if (slot.offset == INVALID_SLOT_OFFSET) {
+            compacted_slots.push_back({INVALID_SLOT_OFFSET, 0});
+            continue;
+        }
+
+        offset -= slot.length;
+        std::span<std::byte> slot_data{data_.subspan(slot.offset, slot.length)};
+
+        std::copy(slot_data.begin(), slot_data.end(), compacted.begin() + offset);
+        compacted_slots.push_back({offset, slot.length});
+    }
+
+    compacted_header.free_space_offset = offset;
+
+    // rewrite data
+    std::fill(data_.begin(), data_.end(), std::byte{0});
+
+    std::memcpy(data_.data(), &compacted_header, sizeof(PageHeader));
+    std::memcpy(data_.data() + sizeof(PageHeader), compacted_slots.data(), compacted_slots.size() * sizeof(Slot));
+    std::copy(compacted.begin() + offset, compacted.end(), data_.begin() + offset);
 }
 
 void SlottedPage::set_next_page(PageID page_id) {

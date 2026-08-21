@@ -19,6 +19,7 @@ public:
 
     std::optional<RID> insert_tuple(std::span<const std::byte> tuple_data);
     std::optional<std::vector<std::byte>> get_tuple(RID rid);
+    std::optional<RID> update_tuple(RID rid, std::span<const std::byte> tuple);
     bool delete_tuple(RID rid);
 
     PageID first_page_id() const {

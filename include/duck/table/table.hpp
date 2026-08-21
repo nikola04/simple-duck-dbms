@@ -16,6 +16,7 @@ public:
 
     std::optional<RID> insert_tuple(const Tuple& tuple);
     std::optional<Tuple> get_tuple(RID rid);
+    std::optional<RID> update_tuple(RID rid, const Tuple& tuple);
     bool delete_tuple(RID rid);
 
     std::string_view name() const {

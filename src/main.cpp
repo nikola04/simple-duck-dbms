@@ -8,11 +8,15 @@
 #include "duck/storage/disk_manager.hpp"
 #include "duck/table/table.hpp"
 #include "duck/tuple/schema.hpp"
+#include "duck/tuple/tuple.hpp"
+#include "duck/tuple/value.hpp"
 #include <cstddef>
+#include <cstdint>
 #include <exception>
 #include <iostream>
 #include <print>
 #include <string>
+#include <vector>
 
 int main() {
     try {
@@ -20,8 +24,31 @@ int main() {
         duck::BufferPoolManager pool{disk_manager, 5};
 
         duck::Catalog catalog{pool, disk_manager};
-        for (auto table : catalog.all_tables()) {
-            std::println("{}\n{}\n", table->name(), table->schema().to_string());
+
+        // std::vector<duck::Column> columns{duck::Column{"id", duck::TypeId::UINT32},
+        //                                   duck::Column{"username", duck::TypeId::VARCHAR, 3000}};
+        // duck::Schema schema{columns};
+        // catalog.create_table("heap_test", schema);
+
+        // for (auto table : catalog.all_tables()) {
+        //     std::println("{}\n{}\n", table->name(), table->schema().to_string());
+        // }
+
+        auto table{catalog.get_table("heap_test")};
+        if (table.has_value()) {
+            std::println("{}\n{}\n", table.value()->name(), table.value()->schema().to_string());
+
+            auto s{std::string()};
+            s.resize(2999, 'c');
+            auto values{std::vector<duck::Value>{duck::Value::of((std::uint32_t)1), duck::Value::of(std::move(s))}};
+
+            duck::Tuple tuple{values, table.value()->schema()};
+            table.value()->update_tuple({3, 0}, tuple);
+        }
+
+        duck::Table::Scan scan = table.value()->scan();
+        while (auto entry = scan.next()) {
+            std::println("RID: {}/{}", entry->first.page_id, entry->first.slot_num);
         }
 
         // duck::TableHeap heap{duck::TableHeap::create(pool)};
@@ -39,12 +66,10 @@ int main() {
         //     std::println("RID: {}/{}, size: {}", entry->first.page_id, entry->first.slot_num, entry->second.size());
         // }
 
-        // std::vector<duck::Column> columns{
-        //     duck::Column{"id", duck::TypeId::UINT32}, duck::Column{"username", duck::TypeId::CHAR, 50},
-        //     duck::Column{"password", duck::TypeId::VARCHAR, 128}, duck::Column{"email", duck::TypeId::VARCHAR, 256},
-        //     duck::Column{"verified", duck::TypeId::BOOL}};
+        // std::vector<duck::Column> columns{duck::Column{"id", duck::TypeId::UINT32},
+        //                                   duck::Column{"username", duck::TypeId::VARCHAR, 3000}};
         // duck::Schema schema{columns};
-        // catalog.create_table("users", schema);
+        // catalog.create_table("heap_test_", schema);
 
         // duck::Table table{heap, schema};
 

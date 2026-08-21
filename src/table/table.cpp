@@ -28,6 +28,13 @@ bool Table::delete_tuple(RID rid) {
     return table_heap_.delete_tuple(rid);
 }
 
+std::optional<RID> Table::update_tuple(RID rid, const Tuple& tuple) {
+    if (!schema_.compatible_with(tuple.schema()))
+        throw std::runtime_error("Table::update_tuple: schemas not compatible");
+
+    return table_heap_.update_tuple(rid, tuple.serialize());
+}
+
 Table::Scan Table::scan() const {
     return Table::Scan{table_heap_.scan(), schema_};
 }
